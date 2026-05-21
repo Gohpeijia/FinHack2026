@@ -1,0 +1,434 @@
+/* ============================================================
+   Zakat.css — Islamic Investment App, Zakat Page
+   Aesthetic: Refined, trustworthy, clean — think Islamic banking
+   Colors: Deep teal + warm gold accents on soft off-white
+   Font: Georgia for headings, system-ui for body
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+/* ── Variables ── */
+:root {
+  --teal:        #1a6b6b;
+  --teal-light:  #e6f4f4;
+  --teal-mid:    #2d8a8a;
+  --gold:        #c9a84c;
+  --gold-light:  #fdf6e3;
+  --gold-dark:   #a07830;
+  --bg:          #f5f6f8;
+  --card-bg:     #ffffff;
+  --text-primary:#1c2b2b;
+  --text-muted:  #6b8080;
+  --border:      #e2eeee;
+  --red-soft:    #fff0f0;
+  --red:         #c0392b;
+  --green-soft:  #f0faf5;
+  --green:       #1a7a4a;
+  --radius-lg:   16px;
+  --radius-md:   12px;
+  --radius-sm:   8px;
+  --shadow:      0 2px 16px rgba(26, 107, 107, 0.08);
+  --shadow-hover:0 6px 28px rgba(26, 107, 107, 0.14);
+}
+
+/* ── Page Shell ── */
+.zakat-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 2rem 2rem 4rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--text-primary);
+}
+
+/* ── Page Header ── */
+.zakat-header {
+  margin-bottom: 2.2rem;
+  padding-bottom: 1.4rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.zakat-main-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--teal);
+  margin: 0 0 0.35rem;
+  letter-spacing: -0.02em;
+}
+
+.zakat-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin: 0;
+  font-weight: 400;
+}
+
+/* ── Section Wrapper ── */
+.zakat-section {
+  margin-bottom: 2.8rem;
+}
+
+.section-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.3rem;
+}
+
+.section-desc {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 0 0 1.2rem;
+}
+
+/* ── Ringkasan Grid ── */
+.ringkasan-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+}
+
+@media (max-width: 600px) {
+  .ringkasan-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Zakat Cards ── */
+.zakat-card {
+  background: var(--card-bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.6rem 1.6rem 1.3rem;
+  box-shadow: var(--shadow);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.zakat-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+.card--due {
+  border-top: 4px solid var(--gold);
+}
+
+.card--history {
+  border-top: 4px solid var(--teal);
+}
+
+.card-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+
+.card-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.currency {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.amount {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.card-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.badge--warning { background: var(--gold-light); color: var(--gold-dark); }
+.badge--success { background: var(--green-soft); color: var(--green); }
+
+.card-action-btn {
+  margin-top: 0.5rem;
+  background: var(--teal);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  cursor: pointer;
+  width: fit-content;
+  transition: background 0.18s;
+}
+
+.card-action-btn:hover { background: var(--teal-mid); }
+
+.card-action-btn--secondary {
+  background: var(--teal-light);
+  color: var(--teal);
+}
+
+.card-action-btn--secondary:hover { background: #cce8e8; }
+
+.edit-icon { font-size: 0.95rem; }
+
+/* ── Asset Card ── */
+.asset-card {
+  background: var(--card-bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.6rem;
+  position: relative;
+}
+
+.asset-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.asset-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.asset-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.asset-row-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  min-width: 170px;
+}
+
+.asset-icon { font-size: 1.15rem; }
+
+.asset-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg);
+  transition: border-color 0.18s;
+}
+
+.asset-input-wrap:focus-within {
+  border-color: var(--teal);
+  background: #fff;
+}
+
+.input-prefix {
+  padding: 0.5rem 0.7rem;
+  background: var(--teal-light);
+  color: var(--teal);
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-right: 1.5px solid var(--border);
+  white-space: nowrap;
+}
+
+.asset-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.92rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--text-primary);
+  width: 130px;
+  appearance: textfield;
+}
+
+.asset-input::-webkit-outer-spin-button,
+.asset-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.asset-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--teal);
+}
+
+.total-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.total-amount {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--teal);
+}
+
+.edit-fab {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: #fff;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(26,107,107,0.25);
+  transition: background 0.18s, transform 0.18s;
+}
+
+.edit-fab:hover { background: var(--teal-mid); transform: scale(1.08); }
+
+/* ── Calculator Card ── */
+.calc-card {
+  background: var(--card-bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.8rem;
+}
+
+.calc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem;
+  margin-bottom: 1.4rem;
+}
+
+@media (max-width: 560px) {
+  .calc-grid { grid-template-columns: 1fr; }
+}
+
+.calc-field { display: flex; flex-direction: column; gap: 0.45rem; }
+
+.calc-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.calc-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-bottom: 1.4rem;
+}
+
+.btn-calc {
+  background: var(--teal);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.btn-calc:hover { background: var(--teal-mid); }
+
+.btn-reset {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s;
+}
+
+.btn-reset:hover { border-color: var(--teal); color: var(--teal); }
+
+/* ── Calculator Result ── */
+.calc-result {
+  border-radius: var(--radius-md);
+  padding: 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  animation: fadeSlideIn 0.3s ease;
+}
+
+.result--due  { background: var(--gold-light); border: 1.5px solid #e8d5a0; }
+.result--none { background: var(--teal-light); border: 1.5px solid #b8d8d8; }
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.result-highlight {
+  margin-top: 0.3rem;
+  padding-top: 0.7rem;
+  border-top: 1.5px dashed var(--gold-dark);
+}
+
+.highlight-amount {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.4rem;
+  color: var(--gold-dark);
+}
+
+.nisab-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+}
+
+.nisab--met  { background: var(--green-soft); color: var(--green); }
+.nisab--not  { background: #fff3f3; color: var(--red); }
+
+.no-zakat-msg {
+  font-size: 0.85rem;
+  color: var(--teal);
+  margin: 0;
+  font-style: italic;
+}
