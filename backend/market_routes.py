@@ -1,13 +1,15 @@
 import os
 import requests
 from flask import Blueprint, jsonify, request
+from backend.security import require_auth
 from shariah_filter import check_shariah_compliance
 from finnhub_service import get_live_price
 
 # Create the blueprint for market data
 market_bp = Blueprint('market', __name__)
 
-@market_bp.route('/details/<ticker>', methods=['GET'])
+@market_bp.route('/details/<ticker>', methods=['GET'])\
+@require_auth
 def get_stock_details(ticker):
     try:
         # 1. Check Shariah compliance
@@ -38,6 +40,7 @@ def get_stock_details(ticker):
         return jsonify({"success": False, "error": str(e)}), 500
     
 @market_bp.route('/all', methods=['GET'])
+@require_auth
 def get_dynamic_halal_stocks():
     try:
         api_key = os.getenv('FINNHUB_API_KEY')

@@ -1,15 +1,17 @@
 from firebase_config import db
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g # <-- Import 'g' from flask!
+from security import require_auth 
 
-# Create a Blueprint (a mini-app for routes)
 portfolio_bp = Blueprint('portfolio', __name__)
 
-# Note: The url_prefix in app.py will handle the "/api/stocks/portfolio" part
-@portfolio_bp.route('/<user_id>', methods=['GET'])
-def get_portfolio(user_id):
+@portfolio_bp.route('/my-portfolio', methods=['GET'])
+@require_auth 
+def get_portfolio():
     try:
-        # Fetch data from Firestore
-        doc_ref = db.collection('users').document(user_id)
+        # Grab the secure ID from the 'g' object
+        secure_user_id = g.uid 
+        
+        doc_ref = db.collection('users').document(secure_user_id)
         doc = doc_ref.get()
         
         if doc.exists:
@@ -19,23 +21,28 @@ def get_portfolio(user_id):
             
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-    
+
 @portfolio_bp.route('/buy', methods=['POST'])
+@require_auth
 def buy_stock():
     try:
-        # 1. Grab the JSON data the frontend sent us
         data = request.json
-        user_id = data.get('userId')
-        ticker = data.get('ticker').upper()
-        shares = int(data.get('shares', 0))
-        price = float(data.get('price', 0.0))
+        secure_user_id = g.uid 
+        
+        ticker = data.get('ticker', '').upper()
+        
+        # Safely attempt to parse numbers to avoid 500 errors if user sends letters
+        try:
+            shares = int(data.get('shares', 0))
+            price = float(data.get('price', 0.0))
+        except ValueError:
+            return jsonify({"success": False, "error": "Shares and price must be valid numbers"}), 400
 
-        # 2. Basic validation check
-        if not all([user_id, ticker, shares, price]):
-            return jsonify({"success": False, "error": "Missing required fields"}), 400
+        # UPGRADE: Strict Validation Hardening
+        if not ticker or shares <= 0 or price <= 0:
+            return jsonify({"success": False, "error": "Invalid trade values. Shares and price must be greater than zero."}), 400
 
-        # 3. Get the user's current portfolio from Firestore
-        user_ref = db.collection('users').document(user_id)
+        user_ref = db.collection('users').document(secure_user_id)
         user_doc = user_ref.get()
 
         if not user_doc.exists:
@@ -44,12 +51,10 @@ def buy_stock():
         user_data = user_doc.to_dict()
         portfolio = user_data.get('portfolio', [])
         
-        # 4. Math: Add new shares to existing stock, OR append new stock to list
         stock_found = False
         for item in portfolio:
             if item['ticker'] == ticker:
                 item['shares'] += shares
-                # (For a hackathon, we skip complex average price math and just update it)
                 item['averagePrice'] = price 
                 stock_found = True
                 break
@@ -61,10 +66,11 @@ def buy_stock():
                 "averagePrice": price
             })
 
-        # 5. Math: Update the total portfolio value
-        total_value = user_data.get('totalPortfolioValue', 0) + (shares * price)
+        # UPGRADE: Recalculate total value from scratch to prevent math drift!
+        total_value = 0
+        for item in portfolio:
+            total_value += (item["shares"] * item["averagePrice"])
 
-        # 6. Save the updated data BACK to Firestore!
         user_ref.update({
             "portfolio": portfolio,
             "totalPortfolioValue": total_value
