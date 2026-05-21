@@ -1,0 +1,5 @@
+.json
+backend/.env
+backend/node_modules/
+backend/firebase-adminsdk.json/
+backend/firebase-adminsdk.json
