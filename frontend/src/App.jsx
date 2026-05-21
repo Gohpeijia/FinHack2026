@@ -6,6 +6,8 @@ import Advisor from './pages/Advisor';
 import Auth from './pages/Auth';
 import Zakat from './pages/Zakat';
 
+import { FaCalculator, FaThLarge, FaRobot, FaSignOutAlt} from 'react-icons/fa';
+
 function App() {
   
 
@@ -13,10 +15,22 @@ function App() {
     <>
       <BrowserRouter>
         <nav>
-          <Link className="nav-zakat" to="/zakat">Zakat</Link>
-          <Link className="nav-dashboard" to="/">Dashboard</Link>
-          <Link className="nav-advisor" to="/advisor">AI Advisor</Link>
-          <Link className="nav-logout" to="/">Log out</Link>
+          <Link className="nav-zakat" to="/zakat">
+            <FaCalculator />
+            Zakat
+          </Link>
+          <Link className="nav-dashboard" to="/">
+            <FaThLarge />
+            Dashboard
+          </Link>
+          <Link className="nav-advisor" to="/advisor">
+            <FaRobot />
+            AI Advisor
+          </Link>
+          <Link className="nav-logout" to="/">
+            <FaSignOutAlt />
+            Log out
+          </Link>
         </nav>
 
         <Routes>

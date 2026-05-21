@@ -11,18 +11,32 @@ nav{
     background-color: var(--teal);
     gap: 20px;
     box-shadow: var(--shadow);
+    box-sizing: border-box;
 }
 
-Link{
+nav a{
     color: var(--teal-light);
     text-decoration: none;
     font-weight: 600;
     padding: 10px 15px;
     border-radius: var(--radius-md);
     transition: background-color 0.2s ease, color 0.2s ease;
+
+    /*icon*/
+    gap: 12px;
+    display: flex;
+    align-items: center;
 }
 
-.nav-zakat {
-    color: var(--teal-light);
+.nav-logout{
+    margin-bottom: 0;
+    margin-top: auto;
+
+}
+
+.nav-zakat:hover, .nav-dashboard:hover, .nav-advisor:hover, .nav-logout:hover {
+    background-color: var(--teal-light);
+    color: var(--teal-dark);
     
+
 }
