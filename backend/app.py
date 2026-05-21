@@ -9,6 +9,7 @@ from flask_limiter.util import get_remote_address
 from portfolio_routes import portfolio_bp
 from market_routes import market_bp  
 from zakat_endpoints import zakat_bp
+from aiagent.ai_routes import ai_bp
 
 
 logging.basicConfig(
@@ -30,6 +31,7 @@ limiter = Limiter(
 app.register_blueprint(portfolio_bp, url_prefix='/api/stocks/portfolio')
 app.register_blueprint(market_bp, url_prefix='/api/stocks/market')
 app.register_blueprint(zakat_bp, url_prefix='/api/zakat')
+app.register_blueprint(ai_bp, url_prefix='/api/aiagent/ai')
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
