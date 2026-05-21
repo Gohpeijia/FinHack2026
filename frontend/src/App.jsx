@@ -15,23 +15,23 @@ function App() {
     <>
       <BrowserRouter>
         <nav>
-          <Link className="nav-zakat" to="/zakat">
-            <FaCalculator />
-            Zakat
-          </Link>
-          <Link className="nav-dashboard" to="/">
-            <FaThLarge />
-            Dashboard
-          </Link>
-          <Link className="nav-advisor" to="/advisor">
-            <FaRobot />
-            AI Advisor
-          </Link>
-          <Link className="nav-logout" to="/">
-            <FaSignOutAlt />
-            Log out
-          </Link>
-        </nav>
+  <Link className="nav-zakat" to="/zakat">
+    <FaCalculator />
+    <span>Zakat</span>
+  </Link>
+  <Link className="nav-dashboard" to="/dashboard">
+    <FaThLarge />
+    <span>Dashboard</span>
+  </Link>
+  <Link className="nav-advisor" to="/advisor">
+    <FaRobot />
+    <span>AI Advisor</span>
+  </Link>
+  <Link className="nav-logout" to="/">
+    <FaSignOutAlt />
+    <span>Log out</span>
+  </Link>
+</nav>
 
         <Routes>
           <Route path="/zakat" element={<Zakat />} />

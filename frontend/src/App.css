@@ -40,3 +40,28 @@ nav a{
     
 
 }
+
+/* Existing nav styles... */
+
+/* Add this media query at the end of your App.css */
+@media (max-width: 768px) {
+    nav {
+        width: 60px; /* Sidebar shrinks to icon width */
+        padding: 20px 5px;
+    }
+
+    /* Hide the text labels when the screen is small */
+   nav a {
+        justify-content: center; /* Centers the icon */
+        padding: 10px 0; /* Remove horizontal padding */
+    }
+
+    nav a span {
+        display: none; /* Removes text completely */
+    }
+
+    /* Keep the icon visible */
+    nav a svg {
+        font-size: 1.2rem;
+    }
+}
