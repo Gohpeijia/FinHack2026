@@ -3,6 +3,7 @@ import ZakatRingkasan from './ZakatRingkasan';
 import ZakatAsset from './ZakatAsset';
 import ZakatCalculator from './ZakatCalculator';
 import './Zakat.css';
+import '../shared.css';
 
 export default function Zakat() {
   return (
