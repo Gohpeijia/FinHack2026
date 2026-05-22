@@ -1,48 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState , useEffect } from 'react';
 import './Zakat.css';
 
-const assetTypes = [
-  { key: 'simpanan', label: 'Simpanan Tunai', icon: '🏦' },
-  { key: 'pelaburan', label: 'Pelaburan & Saham', icon: '📈' },
-  { key: 'emas', label: 'Emas & Perak', icon: '🪙' },
-  { key: 'perniagaan', label: 'Aset Perniagaan', icon: '💼' },
+const liabilitiTypes = [
+  { key: 'hutangperibadi', label: 'Hutang Peribadi', icon: '👤' },
+  { key: 'pinjamankenderaan', label: 'Pinjaman Kenderaan', icon: '🚗' },
+  { key: 'pinjamanrumah', label: 'Pinjaman Rumah', icon: '🏠' },
+  { key: 'lain', label: 'Liabiliti Lain-lain', icon: '📋' },
 ];
 
-export default function ZakatAsset({ onTotalChange }) {
+export default function ZakatLiabiliti({ onTotalChange }) {
 
   // 1. Declare state FIRST
-  const [assets, setAssets] = useState({
-    simpanan: [
-      { id: 'simp-1', label: 'Bank', amount: '' },
-      { id: 'simp-2', label: 'Tunai Semasa', amount: '' }
+  const [liabiliti, setLiabiliti] = useState({
+    hutangperibadi: [
+      { id: 'hp-1', label: 'Kad Kredit', amount: '' },
+      { id: 'hp-2', label: 'Hutang Peribadi', amount: '' }
     ],
-    pelaburan: [
-      { id: 'pel-1', label: 'Pelaburan / Saham', amount: '' }
+    pinjamankenderaan: [
+      { id: 'pk-1', label: 'Ansuran Kereta', amount: '' }
     ],
-    emas: [
-      { id: 'emas-1', label: 'Emas Fizikal', amount: '' }
+    pinjamanrumah: [
+      { id: 'pr-1', label: 'Ansuran Rumah', amount: '' }
     ],
-    perniagaan: [
-      { id: 'pern-1', label: 'Aset Perniagaan', amount: '' }
+    lain: [
+      { id: 'lain-1', label: 'Liabiliti Lain', amount: '' }
     ]
   });
 
   const [expanded, setExpanded] = useState({
-    simpanan: true,
-    pelaburan: false,
-    emas: false,
-    perniagaan: false
+    hutangperibadi: true,
+    pinjamankenderaan: false,
+    pinjamanrumah: false,
+    lain: false
   });
 
   const [isEditing, setIsEditing] = useState(false);
 
   // 2. Declare helper functions SECOND
   const getCategoryTotal = (key) => {
-    return assets[key].reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    return liabiliti[key].reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
   };
 
   // 3. Perform calculations that depend on state and helpers THIRD
-  const grandTotal = assetTypes.reduce((sum, type) => sum + getCategoryTotal(type.key), 0);
+  const grandTotal = liabilitiTypes.reduce((sum, type) => sum + getCategoryTotal(type.key), 0);
 
   // 4. Run effects FOURTH
   useEffect(() => {
@@ -56,9 +56,8 @@ export default function ZakatAsset({ onTotalChange }) {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Mengemas kini nilai teks nama atau jumlah amaun dalam sub-kategori
   const handleItemChange = (categoryKey, itemId, field, value) => {
-    setAssets((prev) => ({
+    setLiabiliti((prev) => ({
       ...prev,
       [categoryKey]: prev[categoryKey].map((item) =>
         item.id === itemId ? { ...item, [field]: value } : item
@@ -66,22 +65,20 @@ export default function ZakatAsset({ onTotalChange }) {
     }));
   };
 
-  // Menambah item sub-kategori baru secara dinamik
   const handleAddItem = (categoryKey) => {
     const newItem = {
       id: `${categoryKey}-${Date.now()}`,
       label: '',
       amount: ''
     };
-    setAssets((prev) => ({
+    setLiabiliti((prev) => ({
       ...prev,
       [categoryKey]: [...prev[categoryKey], newItem]
     }));
   };
 
-  // Memadam item sub-kategori
   const handleDeleteItem = (categoryKey, itemId) => {
-    setAssets((prev) => ({
+    setLiabiliti((prev) => ({
       ...prev,
       [categoryKey]: prev[categoryKey].filter((item) => item.id !== itemId)
     }));
@@ -90,7 +87,7 @@ export default function ZakatAsset({ onTotalChange }) {
   const handleActionClick = async () => {
     if (isEditing) {
       try {
-        console.log("Saving data to database...", assets);
+        console.log("Saving liabiliti to database...", liabiliti);
         // Tempat letak panggilan API/Axios anda nanti
         setIsEditing(false);
       } catch (error) {
@@ -103,24 +100,22 @@ export default function ZakatAsset({ onTotalChange }) {
 
   return (
     <section className="zakat-section">
-      <h2 className="section-title">Jumlah Aset</h2>
-      <p className="section-desc">Masukkan nilai semasa aset anda untuk pengiraan yang tepat.</p>
+      <h2 className="section-title">Jumlah Liabiliti</h2>
+      <p className="section-desc">Masukkan nilai semasa liabiliti anda untuk pengiraan yang tepat.</p>
 
       <div className="asset-card">
-          <div className="edit-hint-banner">
-            <span>Sila klik butang ikon pen (✎) di penjuru kanan bawah untuk mula mengemas kini atau menambah sub-kategori aset anda.</span>
-          </div>
-        
+        <div className="edit-hint-banner">
+          <span>Sila klik butang ikon pen (✎) di penjuru kanan bawah untuk mula mengemas kini atau menambah sub-kategori liabiliti anda.</span>
+        </div>
 
         <div className="asset-rows">
-          {assetTypes.map(({ key, label, icon }) => {
+          {liabilitiTypes.map(({ key, label, icon }) => {
             const isCategoryOpen = expanded[key];
             const catTotal = getCategoryTotal(key);
 
             return (
               <div key={key} className="asset-category-group">
-                {/* Bar utama kategori berfungsi sebagai pengepala dropdown */}
-                <div 
+                <div
                   className={`asset-row clickable ${isCategoryOpen ? 'active-row' : ''}`}
                   onClick={() => toggleExpand(key)}
                   title="Klik untuk melihat pecahan"
@@ -130,27 +125,26 @@ export default function ZakatAsset({ onTotalChange }) {
                     <span className="asset-icon">{icon}</span>
                     <span className="category-main-text">{label}</span>
                   </div>
-                  <div className="category-total-display">
+                  <div className="category-total-display liabiliti-total">
                     RM {catTotal.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
                   </div>
                 </div>
 
-                {/* Kandungan Dropdown Sub-Kategori */}
                 {isCategoryOpen && (
                   <div className="sub-items-container">
-                    {assets[key].map((item) => (
+                    {liabiliti[key].map((item) => (
                       <div className="sub-item-row" key={item.id}>
                         <input
                           className="sub-item-name-input"
                           type="text"
-                          placeholder="Nama item (cth: Maybank, Tunai Buku)"
+                          placeholder="Nama item (cth: CIMB Kad Kredit, Pinjaman ASB)"
                           value={item.label}
                           onChange={(e) => handleItemChange(key, item.id, 'label', e.target.value)}
                           disabled={!isEditing}
                         />
-                        
+
                         <div className={`asset-input-wrap ${!isEditing ? 'disabled-wrap' : ''}`}>
-                          <span className="input-prefix">RM</span>
+                          <span className="input-prefix liabiliti-prefix">RM</span>
                           <input
                             className="asset-input"
                             type="number"
@@ -175,7 +169,6 @@ export default function ZakatAsset({ onTotalChange }) {
                       </div>
                     ))}
 
-                    {/* Butang Tambah Sub-Kategori Baru */}
                     {isEditing && (
                       <button
                         type="button"
@@ -193,18 +186,18 @@ export default function ZakatAsset({ onTotalChange }) {
         </div>
 
         {/* Bar Jumlah Keseluruhan */}
-        <div className="asset-total-row">
-          <span className="total-label">Jumlah Keseluruhan</span>
-          <span className="total-amount">
+        <div className="asset-total-row liabiliti-total-row">
+          <span className="total-label">Jumlah Keseluruhan Liabiliti</span>
+          <span className="total-amount liabiliti-total-amount">
             RM {grandTotal.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
           </span>
         </div>
 
         {/* Floating Action Button */}
-        <button 
-          className={`edit-fab ${isEditing ? 'save-mode' : ''}`} 
+        <button
+          className={`edit-fab ${isEditing ? 'save-mode' : ''}`}
           onClick={handleActionClick}
-          title={isEditing ? "Simpan Aset ke Database" : "Edit Aset"}
+          title={isEditing ? "Simpan Liabiliti ke Database" : "Edit Liabiliti"}
         >
           {isEditing ? '💾' : '✎'}
         </button>
