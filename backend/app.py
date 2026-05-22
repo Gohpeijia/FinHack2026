@@ -4,7 +4,8 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_limiter import Limiter               
 from flask_limiter.util import get_remote_address
-
+from dotenv import load_dotenv
+load_dotenv()
 # Import your route blueprints
 from portfolio_routes import portfolio_bp
 from market_routes import market_bp  
@@ -32,6 +33,14 @@ app.register_blueprint(portfolio_bp, url_prefix='/api/stocks/portfolio')
 app.register_blueprint(market_bp, url_prefix='/api/stocks/market')
 app.register_blueprint(zakat_bp, url_prefix='/api/zakat')
 app.register_blueprint(ai_bp, url_prefix='/api/aiagent/ai')
+
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({
+        "message": "Welcome to the FinHack2026 Backend! 🚀",
+        "status": "Online",
+        "docs": "Go to /api/health to check server health."
+    })
 
 @app.route('/api/health', methods=['GET'])
 def health_check():

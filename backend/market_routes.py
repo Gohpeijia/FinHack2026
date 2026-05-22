@@ -1,14 +1,14 @@
 import os
 import requests
 from flask import Blueprint, jsonify, request
-from backend.security import require_auth
+from security import require_auth
 from shariah_filter import check_shariah_compliance
 from finnhub_service import get_live_price
 
 # Create the blueprint for market data
 market_bp = Blueprint('market', __name__)
 
-@market_bp.route('/details/<ticker>', methods=['GET'])\
+@market_bp.route('/details/<ticker>', methods=['GET'])
 @require_auth
 def get_stock_details(ticker):
     try:

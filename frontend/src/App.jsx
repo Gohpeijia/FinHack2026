@@ -6,6 +6,7 @@ import Auth from './pages/Auth';
 import Zakat from './pages/Zakat';
 import Stocks from './pages/Stocks';
 
+
 import { FaCalculator, FaThLarge, FaRobot, FaSignOutAlt, FaChartLine } from 'react-icons/fa';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';

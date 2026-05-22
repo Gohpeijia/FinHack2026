@@ -28,8 +28,25 @@ async function apiFetchQuote(ticker) {
 }
 
 async function apiFetchChart(ticker, period) {
-  // Generate some fake chart data so the graph looks cool
-  const data = Array.from({length: 30}, (_, i) => ({ label: `Day ${i}`, price: 9.00 + Math.random() }));
+  let dataLength = 30;
+  let labelPrefix = 'Day';
+
+  // Generate different mock data based on the chosen period
+  switch (period) {
+    case '1D':  dataLength = 24; labelPrefix = 'Hour'; break;
+    case '1W':  dataLength = 7;  labelPrefix = 'Day'; break;
+    case '1M':  dataLength = 30; labelPrefix = 'Day'; break;
+    case '3M':  dataLength = 12; labelPrefix = 'Week'; break;
+    case '1Y':  dataLength = 12; labelPrefix = 'Month'; break;
+    case 'ALL': dataLength = 5;  labelPrefix = 'Year'; break;
+    default:    dataLength = 30; labelPrefix = 'Day'; break;
+  }
+
+  const data = Array.from({length: dataLength}, (_, i) => ({ 
+    label: `${labelPrefix} ${i + 1}`, 
+    price: 9.00 + Math.random() 
+  }));
+  
   return { data, high: 10.00, low: 9.00 };
 }
 

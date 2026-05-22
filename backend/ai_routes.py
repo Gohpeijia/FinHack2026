@@ -1,55 +1,60 @@
 from flask import Blueprint, request, jsonify, g
-from aiagent.ai_agent import AIAgent
-from firebase_config import db      # <-- Import your database
-from security import require_auth   # <-- Ensure only logged-in users can chat
-from datetime import datetime       # <-- To timestamp the messages
+from ai_agent import AIAgent
+from firebase_config import db      
+from security import require_auth   
+from datetime import datetime       
 
 ai_bp = Blueprint('ai', __name__)
 agent = AIAgent()
 
 @ai_bp.route('/chat', methods=['POST'])
-@require_auth  # Protect the route!
+@require_auth 
 def chat_with_agent():
     try:
         data = request.json
-        user_message = data.get('message')
+        
+        # Check for both 'message' and 'text' depending on how your frontend named it
+        user_message = data.get('message') or data.get('text') 
         ticker = data.get('ticker') 
         
-        # 1. Identify the user securely
+        # 1. CATCH THE NEW FRONTEND VARIABLE
+        page_context = data.get('pageContext', 'Unknown Page') 
+        
         secure_user_id = g.uid
         
         if not user_message:
             return jsonify({"success": False, "error": "Message is required."}), 400
 
-        print(f"🤖 [API] Processing message: {user_message}")
+        print(f"🤖 [API] Processing message: {user_message} on page: {page_context}")
         
-        # 2. Feed it into your teammate's AI pipeline!
-        result = agent.process(user_input=user_message, ticker=ticker)
+        user_ref = db.collection('users').document(secure_user_id)
+        user_doc = user_ref.get()
+        
+        chat_history = []
+        preferences = {}
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            chat_history = user_data.get('chat_history', [])
+            preferences = user_data.get('preference', {})
+
+        # 2. PASS PAGE CONTEXT TO THE AI AGENT
+        result = agent.process(
+            user_input=user_message, 
+            ticker=ticker, 
+            chat_history=chat_history,
+            page_context=page_context,
+            preferences=preferences
+        )
 
         if result.get("status") == "ERROR":
             return jsonify({"success": False, "error": result["final_advice"]}), 503
 
-        # 3. SAVE TO FIRESTORE DATABASE
-        # We grab the user's document
-        user_ref = db.collection('users').document(secure_user_id)
-        user_doc = user_ref.get()
-        
-        # Get existing history, or start a new empty list
-        chat_history = []
-        if user_doc.exists:
-            user_data = user_doc.to_dict()
-            chat_history = user_data.get('chat_history', [])
-
-        # Append the new conversation pair
         now = datetime.now().isoformat()
         chat_history.append({"role": "user", "content": user_message, "timestamp": now})
         chat_history.append({"role": "ai", "content": result['final_advice'], "timestamp": now})
 
-        # Save it back to the cloud!
-        # Using merge=True ensures we don't accidentally delete their portfolio data
         user_ref.set({"chat_history": chat_history}, merge=True)
 
-        # 4. Send the result back to React
         return jsonify({
             "success": True,
             "data": result

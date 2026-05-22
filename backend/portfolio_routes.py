@@ -48,18 +48,23 @@ def buy_stock():
         data = request.json
         secure_user_id = g.uid 
         
-        ticker = data.get('ticker', '').upper()
+        # 1. Extract the new attributes from the frontend request
+        sticker = data.get('sticker', '').upper()
+        name = data.get('name', '').strip()
         
-        # Safely attempt to parse numbers to avoid 500 errors if user sends letters
         try:
             shares = int(data.get('shares', 0))
-            price = float(data.get('price', 0.0))
         except ValueError:
-            return jsonify({"success": False, "error": "Shares and price must be valid numbers"}), 400
+            return jsonify({"success": False, "error": "Shares must be a valid number"}), 400
 
-        # UPGRADE: Strict Validation Hardening
-        if not ticker or shares <= 0 or price <= 0:
-            return jsonify({"success": False, "error": "Invalid trade values. Shares and price must be greater than zero."}), 400
+        # Extract extra metadata fields provided by the frontend
+        fields = data.get('fields', {})       # Can be an object/dict or string
+        chart = data.get('chart', {})         # Can be an object/dict or string
+        watchlist = bool(data.get('watchlist', False))
+
+        # Strict Validation Hardening
+        if not sticker or shares <= 0:
+            return jsonify({"success": False, "error": "Invalid trade values. Sticker is required and shares must be greater than zero."}), 400
 
         user_ref = db.collection('users').document(secure_user_id)
         user_doc = user_ref.get()
@@ -70,34 +75,101 @@ def buy_stock():
         user_data = user_doc.to_dict()
         portfolio = user_data.get('portfolio', [])
         
+        # 2. Look for the asset inside the array using the new 'sticker' key
         stock_found = False
         for item in portfolio:
-            if item['ticker'] == ticker:
+            if item.get('sticker') == sticker:
                 item['shares'] += shares
-                item['averagePrice'] = price 
+                item['name'] = name
+                item['fields'] = fields
+                item['chart'] = chart
+                item['watchlist'] = watchlist
                 stock_found = True
                 break
 
+        # If it's a new stock, append the entire new schema layout
         if not stock_found:
             portfolio.append({
-                "ticker": ticker,
+                "sticker": sticker,
+                "name": name,
                 "shares": shares,
-                "averagePrice": price
+                "fields": fields,
+                "chart": chart,
+                "watchlist": watchlist
             })
 
-        # UPGRADE: Recalculate total value from scratch to prevent math drift!
-        total_value = 0
-        for item in portfolio:
-            total_value += (item["shares"] * item["averagePrice"])
+        # 3. Update payload (Accepting total portfolio value calculation directly from the frontend)
+        update_payload = {
+            "portfolio": portfolio
+        }
+        
+        if 'totalPortfolioValue' in data:
+            update_payload["totalPortfolioValue"] = float(data.get('totalPortfolioValue', 0.0))
 
+        user_ref.update(update_payload)
+
+        return jsonify({
+            "success": True, 
+            "message": f"Successfully updated portfolio entry for {sticker}!"
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    
+# --- WATCHLIST MANAGEMENT ---
+@portfolio_bp.route('/watchlist', methods=['POST'])
+@require_auth
+def manage_watchlist():
+    try:
+        data = request.json
+        secure_user_id = g.uid
+
+        # Extract the attributes
+        sticker = data.get('sticker', '').upper()
+        
+        try:
+            price = float(data.get('price', 0.0))
+        except ValueError:
+            return jsonify({"success": False, "error": "Price must be a valid number"}), 400
+
+        if not sticker:
+            return jsonify({"success": False, "error": "Sticker is required."}), 400
+
+        user_ref = db.collection('users').document(secure_user_id)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        # Retrieve the existing watchlist array, or start a new one
+        user_data = user_doc.to_dict()
+        watchlist = user_data.get('watchlist', [])
+
+        # Check if the sticker is already in the watchlist
+        stock_found = False
+        for item in watchlist:
+            if item.get('sticker') == sticker:
+                # If it exists, just update the latest saved price
+                item['price'] = price
+                stock_found = True
+                break
+
+        # If it's a new stock, add it to the array
+        if not stock_found:
+            watchlist.append({
+                "sticker": sticker,
+                "price": price
+            })
+
+        # Save back to Firestore
         user_ref.update({
-            "portfolio": portfolio,
-            "totalPortfolioValue": total_value
+            "watchlist": watchlist
         })
 
         return jsonify({
             "success": True, 
-            "message": f"Successfully bought {shares} shares of {ticker}!"
+            "message": f"Successfully updated {sticker} in your watchlist!",
+            "data": watchlist
         })
 
     except Exception as e:
@@ -110,34 +182,31 @@ def update_profile():
         data = request.json
         user_id = g.uid
 
-        name = data.get('name', '').strip()
         email = data.get('email', '').strip()
-        state = data.get('state', '').strip()
-
-        if state and state not in FITRAH_RATES:
-            return jsonify({
-                "success": False,
-                "error": f"Invalid state. Must be one of: {list(FITRAH_RATES.keys())}"
-            }), 400
+        preference_data = data.get('preference', {})
 
         update_payload = {"profile_complete": False}
 
-        if name:
-            update_payload["name"] = name
         if email:
             update_payload["email"] = email
-        if state:
-            update_payload["state"] = state
-            update_payload["fitrah_rate"] = FITRAH_RATES[state]  # store rate directly
 
-        if name and email and state:
+        # Safely map the preference object
+        if preference_data:
+            update_payload["preference"] = {
+                "employmentStatus": preference_data.get('employmentStatus', ''),
+                "monthlyIncome": float(preference_data.get('monthlyIncome', 0.0)),
+                "investmentExperience": preference_data.get('investmentExperience', ''),
+                "riskTolerance": preference_data.get('riskTolerance', ''),
+                "zakatGoal": preference_data.get('zakatGoal', '')
+            }
             update_payload["profile_complete"] = True
 
+        # Use update() to merge without deleting their portfolio or history
         db.collection('users').document(user_id).update(update_payload)
 
         return jsonify({
             "success": True,
-            "message": "Profile updated.",
+            "message": "Preferences safely updated.",
             "data": update_payload
         })
 
@@ -160,12 +229,45 @@ def get_profile():
         return jsonify({
             "success": True,
             "data": {
-                "name": data.get("name", ""),
                 "email": data.get("email", ""),
-                "state": data.get("state", ""),
-                "fitrah_rate": data.get("fitrah_rate", 7.00),
+                "preference": data.get("preference", {}),
                 "profile_complete": data.get("profile_complete", False)
             }
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+        
+@portfolio_bp.route('/watchlist/remove', methods=['POST'])
+@require_auth
+def remove_from_watchlist():
+    try:
+        data = request.json
+        secure_user_id = g.uid
+        sticker_to_remove = data.get('sticker', '').upper()
+
+        if not sticker_to_remove:
+             return jsonify({"success": False, "error": "Sticker is required."}), 400
+
+        user_ref = db.collection('users').document(secure_user_id)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        user_data = user_doc.to_dict()
+        watchlist = user_data.get('watchlist', [])
+
+        # Filter out the sticker the user wants to remove
+        updated_watchlist = [item for item in watchlist if item.get('sticker') != sticker_to_remove]
+
+        user_ref.update({
+            "watchlist": updated_watchlist
+        })
+
+        return jsonify({
+            "success": True, 
+            "message": f"Removed {sticker_to_remove} from watchlist."
         })
 
     except Exception as e:

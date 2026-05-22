@@ -78,7 +78,7 @@ def get_current_gold_price():
             if last_updated.tzinfo is None:
                 last_updated = last_updated.replace(tzinfo=timezone.utc)
             
-            if (now - last_updated) < timedelta(hours=6):
+            if (now - last_updated) < timedelta(hours=168):  # 7 days freshness threshold
                 logging.info("⚡ [CACHE HIT] Price is fresh. Using database price.")
                 return old_price
         except Exception as e:

@@ -109,21 +109,25 @@ const StockChart = memo(function StockChart({
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 11, fill: 'var(--text-muted)', fontFamily: 'DM Sans, sans-serif' }}
-              axisLine={false}
-              tickLine={false}
-              interval="preserveStartEnd"
+           <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: 'var(--text-muted)', fontFamily: 'DM Sans, sans-serif' }}
+                 axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+                minTickGap={20} /* ✅ Ditambah: mengelakkan label dari bertindan jika terlalu banyak */
             />
             <YAxis
-                tick={{ fontSize: 11, fill: 'var(--text-muted)', fontFamily: 'DM Sans, sans-serif' }}
-                axisLine={false}
-                tickLine={false}
+                 tick={{ fontSize: 11, fill: 'var(--text-muted)', fontFamily: 'DM Sans, sans-serif' }}
+                 axisLine={false}
+                 tickLine={false}
+                 /* FIX: Return numbers for the domain, not strings */
                 domain={[
-                    dataMin => (dataMin * 0.98).toFixed(2), // 🟢 2% padding on the bottom
-                    dataMax => (dataMax * 1.02).toFixed(2)  // 🟢 2% padding on the top
+                   dataMin => dataMin * 0.98, 
+                  dataMax => dataMax * 1.02  
                 ]}
+                /* FIX: Format the labels to 2 decimal places here instead */
+                tickFormatter={(value) => value.toFixed(2)}
                 width={48}
             />
             <Tooltip content={<CustomTooltip />} />

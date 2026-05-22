@@ -102,36 +102,24 @@
 
 /* ── Main Dashboard Area ── */
 .stocks-main {
-  flex: 1;                  /* Forces it to grow and fill all space between sidebars */
+  flex: 1;                  
   display: flex;
   flex-direction: column;
+  gap: 1.5rem;              /* ✅ Ditambah: memberi jarak seragam antara kad */
   overflow-y: auto;
   padding: 1.5rem;
   box-sizing: border-box;
-  width: 100%;              /* Ensure it fills the flex-container parent */
+  width: 100%;              
 }
 
 .stock-search-wrap,
 .stock-header-card,
+.stock-chart-card,          /* ✅ Ditambah: agar carta mempunyai lebar 100% sejajar dengan kad lain */
 .stock-details-card,
 .stocks-empty-state {
-  width: 100% !important;     /* Force elements to take up full available main container width */
-  max-width: none !important; /* Overwrites any hidden max-width inherited from shared styles */
+  width: 100% !important;     
+  max-width: none !important; 
   box-sizing: border-box;
-}
-
-/* ── Adjust the Chart Wrapper Area ── */
-/* If you have a specific wrapper around <StockChart /> or inside it, make sure it blows up to full width */
-.stock-chart-container, 
-.recharts-responsive-container {
-  width: 100% !important;
-  max-width: none !important;
-}
-
-.stock-chart-container, 
-.recharts-responsive-container {
-  width: 100% !important;
-  max-width: none !important;
 }
 
 .stocks-main::-webkit-scrollbar { width: 6px; }

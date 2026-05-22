@@ -88,8 +88,12 @@ export default function Auth() {
       });
 
       navigate('/preferences');
-    } catch (err) {
-      setError(friendlyError(err.code));
+    }  catch (err) {
+      // 1. Print the full error to the console
+      console.error("🔥 FIREBASE ERROR:", err); 
+      
+      // 2. Force the UI to show the actual English error message from Firebase
+      setError(`${friendlyError(err.code)} (Details: ${err.message})`);
     } finally {
       setLoading(false);
     }

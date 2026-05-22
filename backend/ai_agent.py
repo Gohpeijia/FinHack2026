@@ -1,12 +1,8 @@
 import os
-from pyexpat.errors import messages
 import time
 import requests
-from utils import clean_text, detect_missing_info
 from prompt_engine import ShariahAdvisorPromptManager
-from backend.shariah_filter import shariahfilter
-from investment_ranker import InvestmentRanker
-
+from shariah_filter import shariahfilter
 
 class AIAgent:
     def __init__(self):
@@ -57,87 +53,63 @@ class AIAgent:
 
         self.prompt_engine = ShariahAdvisorPromptManager()
         self.shariah = shariahfilter()
-        self.rank_engine = InvestmentRanker()
 
-    def process(self, user_input: str, ticker: str = None, chat_history: list = None):
-        user_input = clean_text(user_input)
-        missing = detect_missing_info(user_input)
+    # Add page_context to the process parameters
+    # Add preferences to the parameters
+    def process(self, user_input: str, ticker: str = None, chat_history: list = None, page_context: str = "Unknown", preferences: dict = None):
         
-        missing_context = ""
-        if missing:
-            missing_items = ", ".join(missing)
-            missing_context = f"\n\nCRITICAL INSTRUCTION: The user forgot to provide: {missing_items}. In your response, politely ask them to provide this information so you can give better advice."
-
-        system_prompt = self.prompt_engine.get_system_prompt()
-        savings_options = self.savings_advisor.get_recommendations()
+        # 1. Pass preferences into the prompt engine!
+        system_prompt = self.prompt_engine.get_system_prompt(preferences)
 
         is_compliant = False
-        debt_ratio = 0.0
         reason = "No specific stock analyzed."
         
         if ticker:
-            # Now we use the Master Screener!
             compliance_data = self.shariah.check_compliance(ticker)
             is_compliant = compliance_data.get("isHalal", False)
             reason = compliance_data.get("reason", "Unknown")
-            debt_ratio = 15.0 if is_compliant else 45.0
-
-        mirofish_insights = self.mirofish.execute_parallel_rehearsal(
-            ticker=ticker or "General Portfolio", 
-            audit_data={"is_compliant": is_compliant, "cash_ratio": 20, "debt_ratio": debt_ratio}
-        )
 
         quantitative = {
             "is_compliant": is_compliant, 
             "reason": reason
         }
 
-        raw_investments = self._generate_investment_pool()
-        for item in raw_investments:
-            item["is_compliant"] = is_compliant
-        ranked_output = self.rank_engine.rank_options(raw_investments)
+        # 2. Use the new format_agent_input method from prompt_engine
+        prompt_content = self.prompt_engine.format_agent_input(user_input, quantitative, page_context)
 
         return self.build_final_response(
-            user_input, 
             system_prompt, 
-            savings_options, 
-            ranked_output, 
-            mirofish_insights, 
-            quantitative,
-            missing_context
+            prompt_content, 
+            chat_history,
+            quantitative
         )
 
-    def build_final_response(self, user_input, system_prompt, savings, investments, insights, shariah_result, missing_context=""):
-        prompt_content = f"""
-        User Query: {user_input}
-        Real-Time Shariah Data: {shariah_result}
-        Market Context (Mirofish): {insights}
-        {missing_context}
+    def build_final_response(self, system_prompt, prompt_content, chat_history, shariah_result):
         
-        Using the System Rules, generate the final response.
-        """
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        if chat_history:
+            for msg in chat_history[-6:]:
+                role = "assistant" if msg["role"] == "ai" else "user"
+                messages.append({"role": role, "content": msg["content"]})
+        
+        messages.append({"role": "user", "content": prompt_content})
         
         errors = []
         
-        # 🔄 THE FALLBACK LOOP USING RAW REST CALLS
         for provider in self.providers:
             try:
                 print(f"🌐 [AIAgent] Routing raw HTTP request to: {provider['name']}...")
                 
-                # Construct the standard OpenAI JSON payload manually
                 payload = {
                     "model": provider["model"],
-                    "messages": messages,
+                    "messages": messages, 
                     "temperature": 0.2
                 }
                 
-                # Make the raw request
                 response = requests.post(provider["url"], headers=provider["headers"], json=payload, timeout=20)
-                
-                # Throw an error if the server rejected the request
                 response.raise_for_status()
                 
-                # Parse the JSON and extract the text
                 data = response.json()
                 final_advice = data["choices"][0]["message"]["content"]
                 
@@ -147,8 +119,6 @@ class AIAgent:
                     "status": "SUCCESS",
                     "final_advice": final_advice, 
                     "raw_data": {                 
-                        "savings": savings,
-                        "investments": investments,
                         "shariah_status": shariah_result
                     }
                 }
@@ -157,7 +127,8 @@ class AIAgent:
                 err_msg = f"{provider['name']} failed: {str(e)}"
                 print(f"❌ [AIAgent] {err_msg}")
                 errors.append(err_msg)
-                time.sleep(1) # Small 1-second buffer
+                import time
+                time.sleep(1)
 
         return {
             "status": "ERROR",
