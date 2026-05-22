@@ -9,15 +9,21 @@
 
 /* ── Page Shell ── */
 .advisor-page {
-  max-width: 1100px; /* 🟢 CHANGED from 860px to 1100px for a wider layout */
-  margin: 0 auto;
-  padding: 1.5rem 2rem 1rem;
+  /* 🌟 Force the container to expand fully instead of stopping at 1100px */
+  max-width: 100% !important; 
+  width: 100%;
+  
+  /* 🌟 Add comfortable side padding so the text doesn't touch the exact edges */
+  padding: 1.5rem 5rem 1rem; 
+  margin: 0;
+  
   font-family: 'DM Sans', system-ui, sans-serif;
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - 70px); /* Uses maximum available screen height */
+  height: 100vh; /* Fills the viewport perfectly */
   box-sizing: border-box;
+  flex: 1;
 }
 
 /* ── Page Header ── */

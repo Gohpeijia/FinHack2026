@@ -44,15 +44,15 @@ function NavBar() {
       </Link>
       <Link className="nav-stocks" to="/stocks" title="Stocks">
         <FaChartLine />
-        {!isStocks && <span>Stocks</span>}
+        {!isStocks && <span>Saham</span>}
       </Link>
       <Link className="nav-advisor" to="/advisor" title="AI Advisor">
         <FaRobot />
-        {!isStocks && <span>AI Advisor</span>}
+        {!isStocks && <span>Penasihat AI</span>}
       </Link>
       <a href="#" className="nav-logout" onClick={handleLogout} title="Log out">
         <FaSignOutAlt />
-        {!isStocks && <span>Log out</span>}
+        {!isStocks && <span>Log Keluar</span>}
       </a>
     </nav>
   );

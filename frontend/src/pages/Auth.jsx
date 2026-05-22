@@ -147,7 +147,7 @@ export default function Auth() {
 
         {/* Branding */}
         <div className="auth-brand">
-          <h1 className="auth-brand-title">ZakatKu</h1>
+          <h1 className="auth-brand-title">AmanahAI</h1>
           <p className="auth-brand-subtitle">
             {isSignUp ? 'Daftar akaun baharu anda' : 'Selamat kembali'}
           </p>

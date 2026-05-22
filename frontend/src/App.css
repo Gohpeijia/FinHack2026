@@ -81,9 +81,16 @@ nav.nav-icon-only a {
   The stocks page overrides this because it manages its own layout.
 */
 .app-container {
-    margin-left: 200px;
-    padding: 2rem;
-    transition: margin-left 0.2s ease;
+  min-height: 100vh;
+  background-color: var(--bg);
+  box-sizing: border-box;
+  transition: margin 0.2s ease, width 0.2s ease;
+  
+  /* 🌟 Force full layout expansion with correct padding calculation */
+  width: auto; 
+  max-width: 100% !important;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 768px) {

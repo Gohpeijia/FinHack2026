@@ -82,8 +82,8 @@ export default function Advisor() {
       {/* Header */}
       <div className="advisor-header">
         <div>
-          <h1 className="advisor-main-title">AI Shariah Advisor</h1>
-          <p className="advisor-subtitle">Islamic Finance &amp; Zakat Guidance</p>
+          <h1 className="advisor-main-title">Penasihat Syariah AI</h1>
+          <p className="advisor-subtitle">Panduan Syariah Peribadi Anda</p>
         </div>
       </div>
 
@@ -179,7 +179,7 @@ export default function Advisor() {
         <textarea
           ref={textareaRef}
           className="input-textarea"
-          placeholder="Ask about halal investing, zakat, Shariah compliance…"
+          placeholder="Tanya tentang pelaburan patuh Syariah, zakat, dan kepatuhan Syariah…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}

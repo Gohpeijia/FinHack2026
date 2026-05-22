@@ -111,6 +111,29 @@
   width: 100%;              /* Ensure it fills the flex-container parent */
 }
 
+.stock-search-wrap,
+.stock-header-card,
+.stock-details-card,
+.stocks-empty-state {
+  width: 100% !important;     /* Force elements to take up full available main container width */
+  max-width: none !important; /* Overwrites any hidden max-width inherited from shared styles */
+  box-sizing: border-box;
+}
+
+/* ── Adjust the Chart Wrapper Area ── */
+/* If you have a specific wrapper around <StockChart /> or inside it, make sure it blows up to full width */
+.stock-chart-container, 
+.recharts-responsive-container {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.stock-chart-container, 
+.recharts-responsive-container {
+  width: 100% !important;
+  max-width: none !important;
+}
+
 .stocks-main::-webkit-scrollbar { width: 6px; }
 .stocks-main::-webkit-scrollbar-track { background: transparent; }
 .stocks-main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }

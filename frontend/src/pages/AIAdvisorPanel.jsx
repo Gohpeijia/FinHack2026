@@ -109,14 +109,11 @@ export default function AIAdvisorPanel({ pendingText, onClearPending }) {
               <FaRobot size={14} />
             </div>
             <div>
-              <div className="ai-panel__title">AI Advisor</div>
-              <div className="ai-panel__subtitle">Shariah Guidance</div>
+              <div className="ai-panel__title">Penasihat Syariah AI</div>
+              <div className="ai-panel__subtitle">Panduan Syariah Peribadi Anda</div>
             </div>
           </div>
-          <div className="ai-panel__status">
-            <span className="ai-panel__status-dot" />
-            <span className="ai-panel__status-label">Online</span>
-          </div>
+          
         </div>
 
         {/* Chat window */}
@@ -208,7 +205,7 @@ export default function AIAdvisorPanel({ pendingText, onClearPending }) {
           <textarea
             ref={textareaRef}
             className="ai-panel__textarea"
-            placeholder="Ask about halal investing…"
+            placeholder="Tanya tentang pelaburan patuh Syariah…"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
