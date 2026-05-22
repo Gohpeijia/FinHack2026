@@ -9,7 +9,7 @@ from flask_limiter.util import get_remote_address
 from portfolio_routes import portfolio_bp
 from market_routes import market_bp  
 from zakat_endpoints import zakat_bp
-from aiagent.ai_routes import ai_bp
+from ai_routes import ai_bp
 
 
 logging.basicConfig(

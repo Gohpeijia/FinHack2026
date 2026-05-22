@@ -1,8 +1,27 @@
 from firebase_config import db
-from flask import Blueprint, jsonify, request, g # <-- Import 'g' from flask!
+from flask import Blueprint, jsonify, request, g
 from security import require_auth 
 
 portfolio_bp = Blueprint('portfolio', __name__)
+
+FITRAH_RATES = {
+    "Johor": 7.00,
+    "Kedah": 7.00,
+    "Kelantan": 6.00,
+    "Melaka": 7.00,
+    "Negeri Sembilan": 7.00,
+    "Pahang": 7.00,
+    "Perak": 7.00,
+    "Perlis": 6.50,
+    "Pulau Pinang": 7.00,
+    "Sabah": 7.00,
+    "Sarawak": 7.00,
+    "Selangor": 7.00,
+    "Terengganu": 6.00,
+    "W.P. Kuala Lumpur": 8.00,
+    "W.P. Labuan": 7.00,
+    "W.P. Putrajaya": 8.00
+}
 
 @portfolio_bp.route('/my-portfolio', methods=['GET'])
 @require_auth 
@@ -79,6 +98,74 @@ def buy_stock():
         return jsonify({
             "success": True, 
             "message": f"Successfully bought {shares} shares of {ticker}!"
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@portfolio_bp.route('/update', methods=['POST'])
+@require_auth
+def update_profile():
+    try:
+        data = request.json
+        user_id = g.uid
+
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip()
+        state = data.get('state', '').strip()
+
+        if state and state not in FITRAH_RATES:
+            return jsonify({
+                "success": False,
+                "error": f"Invalid state. Must be one of: {list(FITRAH_RATES.keys())}"
+            }), 400
+
+        update_payload = {"profile_complete": False}
+
+        if name:
+            update_payload["name"] = name
+        if email:
+            update_payload["email"] = email
+        if state:
+            update_payload["state"] = state
+            update_payload["fitrah_rate"] = FITRAH_RATES[state]  # store rate directly
+
+        if name and email and state:
+            update_payload["profile_complete"] = True
+
+        db.collection('users').document(user_id).update(update_payload)
+
+        return jsonify({
+            "success": True,
+            "message": "Profile updated.",
+            "data": update_payload
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@portfolio_bp.route('/me', methods=['GET'])
+@require_auth
+def get_profile():
+    try:
+        user_id = g.uid
+        doc = db.collection('users').document(user_id).get()
+
+        if not doc.exists:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        data = doc.to_dict()
+
+        return jsonify({
+            "success": True,
+            "data": {
+                "name": data.get("name", ""),
+                "email": data.get("email", ""),
+                "state": data.get("state", ""),
+                "fitrah_rate": data.get("fitrah_rate", 7.00),
+                "profile_complete": data.get("profile_complete", False)
+            }
         })
 
     except Exception as e:

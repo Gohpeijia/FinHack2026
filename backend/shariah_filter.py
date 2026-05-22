@@ -1,33 +1,76 @@
 import os
 import requests
 
-MAX_DEBT_RATIO = 33.33
-
-def check_shariah_compliance(ticker):
-    """
-    100% Dynamic Filter: Checks real-time debt-to-equity ratios.
-    Islamic Finance Rule: Total Debt should not exceed 33%.
-    """
-    api_key = os.getenv('FINNHUB_API_KEY')
-    url = f"https://finnhub.io/api/v1/stock/metric?symbol={ticker.upper()}&metric=all&token={api_key}"
-
-    try:
-        response = requests.get(url)
-        data = response.json()
+class shariahfilter:
+    def __init__(self):
+        # The API key is grabbed automatically
+        self.api_key = os.getenv('FINNHUB_API_KEY')
         
-        metrics = data.get('metric', {})
-        debt_to_equity = metrics.get('totalDebt/totalEquityAnnual')
+        # The "No-Go" Business Sectors
+        self.forbidden_keywords = [
+            "bank", "banking", "insurance", "takaful", "finance", "credit", "interest", "riba",
+            "gambling", "gaming", "casino", "lottery", "betting", "maysir",
+            "alcohol", "beer", "wine", "brewery", "distillery", "tobacco", "cigarette", "vape",
+            "pork", "bacon", "pornography", "nightclub", "cinema", "entertainment", "weapon", "military"
+        ]
 
-        # Run the dynamic check
-        if debt_to_equity is not None:
-            if debt_to_equity > MAX_DEBT_RATIO:
-                return {"isHalal": False, "reason": f"Haram. Debt ratio {round(debt_to_equity, 2)}% > {MAX_DEBT_RATIO}% limit."}
-            else:
-                return {"isHalal": True, "reason": f"Halal. Passes debt screening ({round(debt_to_equity, 2)}%)."}
+    def check_compliance(self, ticker: str) -> dict:
+        """
+        The Ultimate Screener: Fetches live Finnhub data and runs both
+        Qualitative (Sector) and Quantitative (Debt) Shariah checks.
+        """
+        ticker = ticker.upper()
         
-        # If the company hasn't reported debt to the SEC/Finnhub, we must reject it to be safe.
-        return {"isHalal": False, "reason": "Financial data unavailable. Cannot verify compliance."}
-        
-    except Exception as e:
-        print(f"❌ Error fetching metrics for {ticker}: {e}")
-        return {"isHalal": False, "reason": "API Connection Error"}
+        try:
+            # --- STEP 1: FETCH LIVE DATA FROM FINNHUB ---
+            # Get Company Profile (to see what they do)
+            profile_url = f"https://finnhub.io/api/v1/stock/profile2?symbol={ticker}&token={self.api_key}"
+            profile_data = requests.get(profile_url).json()
+            
+            # Get Financial Metrics (to see their debt)
+            metric_url = f"https://finnhub.io/api/v1/stock/metric?symbol={ticker}&metric=all&token={self.api_key}"
+            metric_data = requests.get(metric_url).json()
+
+            # --- STEP 2: QUALITATIVE CHECK (Business Activity) ---
+            industry = profile_data.get('finnhubIndustry', '').lower()
+            company_name = profile_data.get('name', '').lower()
+            combined_text = f"{industry} {company_name}"
+            
+            # Allow Islamic banks
+            if "islamic" not in combined_text and "takaful" not in combined_text:
+                for keyword in self.forbidden_keywords:
+                    if keyword in combined_text:
+                        return {
+                            "isHalal": False, 
+                            "reason": f"Qualitative Failure: Involved in forbidden sector ({keyword})."
+                        }
+
+            # --- STEP 3: QUANTITATIVE CHECK (Financial Ratios) ---
+            metrics = metric_data.get('metric', {})
+            debt_to_equity = metrics.get('totalDebt/totalEquityAnnual')
+            
+            if debt_to_equity is None:
+                return {
+                    "isHalal": False, 
+                    "reason": "Financial data unavailable. Cannot verify compliance safely."
+                }
+                
+            if debt_to_equity > 33.33:
+                return {
+                    "isHalal": False, 
+                    "reason": f"Quantitative Failure: Debt ratio is {round(debt_to_equity, 2)}% (Exceeds 33.33% limit)."
+                }
+
+            # --- STEP 4: PASS VERDICT ---
+            return {
+                "isHalal": True, 
+                "reason": f"Halal. Passes business screening and debt ratios ({round(debt_to_equity, 2)}%)."
+            }
+            
+        except Exception as e:
+            print(f"❌ Error screening {ticker}: {e}")
+            return {"isHalal": False, "reason": "API Connection Error"}
+
+# Example of how to use it instantly:
+# filter = shariahfilter()
+# result = filter.check_compliance("AAPL")

@@ -1,14 +1,12 @@
 import os
+from pyexpat.errors import messages
 import time
 import requests
 from utils import clean_text, detect_missing_info
 from prompt_engine import ShariahAdvisorPromptManager
-from savings_advisor import SavingsAdvisor
-from mirofish_loop import SwarmSimulationEngine
-from shariah_checker import ShariahChecker
+from backend.shariah_filter import shariahfilter
 from investment_ranker import InvestmentRanker
 
-from backend.shariah_filter import check_shariah_compliance
 
 class AIAgent:
     def __init__(self):
@@ -58,12 +56,10 @@ class AIAgent:
             print("🚨 WARNING: No AI API keys found in .env! The AI Agent will fail.")
 
         self.prompt_engine = ShariahAdvisorPromptManager()
-        self.savings_advisor = SavingsAdvisor()
-        self.mirofish = SwarmSimulationEngine()
-        self.shariah = ShariahChecker()
+        self.shariah = shariahfilter()
         self.rank_engine = InvestmentRanker()
 
-    def process(self, user_input: str, ticker: str = None):
+    def process(self, user_input: str, ticker: str = None, chat_history: list = None):
         user_input = clean_text(user_input)
         missing = detect_missing_info(user_input)
         
@@ -80,10 +76,11 @@ class AIAgent:
         reason = "No specific stock analyzed."
         
         if ticker:
-            compliance_data = check_shariah_compliance(ticker)
+            # Now we use the Master Screener!
+            compliance_data = self.shariah.check_compliance(ticker)
             is_compliant = compliance_data.get("isHalal", False)
             reason = compliance_data.get("reason", "Unknown")
-            debt_ratio = 15.0 if is_compliant else 45.0 
+            debt_ratio = 15.0 if is_compliant else 45.0
 
         mirofish_insights = self.mirofish.execute_parallel_rehearsal(
             ticker=ticker or "General Portfolio", 
@@ -130,10 +127,7 @@ class AIAgent:
                 # Construct the standard OpenAI JSON payload manually
                 payload = {
                     "model": provider["model"],
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": prompt_content}
-                    ],
+                    "messages": messages,
                     "temperature": 0.2
                 }
                 
