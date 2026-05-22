@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import './App.css'
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation,useNavigate } from 'react-router-dom';
 import Advisor from './pages/Advisor';
 import Auth from './pages/Auth';
 import Zakat from './pages/Zakat';
@@ -9,6 +9,11 @@ import Stocks from './pages/Stocks';
 import { FaCalculator, FaThLarge, FaRobot, FaSignOutAlt, FaChartLine } from 'react-icons/fa';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
+
+import { AIAdvisorProvider, useAIAdvisor }  from './pages/AIAdvisorContext';
+import AIAdvisorPanel         from './pages/AIAdvisorPanel';
+import TextHighlightAsk       from './pages/TextHighlightAsk';
+
 /**
  * NavBar — collapses to icon-only when on /stocks,
  * because the stocks page has its own side panel.
@@ -16,8 +21,21 @@ import { auth } from './firebase';
 
 function NavBar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isStocks = location.pathname === '/stocks';
+  const { clearMessages } = useAIAdvisor(); // Get the clear function
 
+  const handleLogout = async (e) => {
+    e.preventDefault(); // Stop standard link navigation
+    try {
+      await signOut(auth); // 1. Log out of Firebase
+      clearMessages();     // 2. Clear AI chat history on both sides
+      navigate('/');       // 3. Go back to auth page
+    } catch (error) {
+      console.error("Error logging out", error);
+    }
+  };
+  
   return (
     <nav className={isStocks ? 'nav-icon-only' : ''}>
       <Link className="nav-zakat" to="/zakat" title="Zakat">
@@ -32,28 +50,59 @@ function NavBar() {
         <FaRobot />
         {!isStocks && <span>AI Advisor</span>}
       </Link>
-      <Link className="nav-logout" to="/" title="Log out">
+      <a href="#" className="nav-logout" onClick={handleLogout} title="Log out">
         <FaSignOutAlt />
         {!isStocks && <span>Log out</span>}
-      </Link>
+      </a>
     </nav>
+  );
+}
+
+function AppShell() {
+  const location = useLocation();
+  const { setHighlightedContext } = useAIAdvisor();
+  
+  const isStocks = location.pathname === '/stocks';
+  const showPanel = location.pathname === '/zakat' || location.pathname === '/stocks';
+
+  /* Dynamically calculate layout boundaries */
+  const mainStyle = {
+    marginLeft: isStocks ? '60px' : '200px', // Shrinks margin when navbar collapses
+    marginRight: showPanel ? '320px' : '0px', // Makes room for the AI panel
+  };
+
+  return (
+    <>
+      <NavBar />
+
+      {/* Page content wrapper dynamically handles layout constraints */}
+      <div className="app-container" style={mainStyle}>
+        <Routes>
+          <Route path="/stocks"  element={<Stocks />} />
+          <Route path="/zakat"   element={<Zakat />} />
+          <Route path="/advisor" element={<Advisor />} />
+          <Route path="/"        element={<Auth />} />
+        </Routes>
+      </div>
+
+      {/* AI side panel */}
+      {showPanel && (
+        <>
+          <AIAdvisorPanel />
+          <TextHighlightAsk onAskAI={setHighlightedContext} />
+        </>
+      )}
+    </>
   );
 }
 
 function App() {
   return (
-    <>
+    <AIAdvisorProvider>
       <BrowserRouter>
-        <NavBar />
-        <Routes>
-          <Route path="/stocks"    element={<Stocks />} />
-          <Route path="/zakat"     element={<Zakat />} />
-          <Route path="/stocks" element={<Stocks />} />
-          <Route path="/advisor"   element={<Advisor />} />
-          <Route path="/"          element={<Auth />} />
-        </Routes>
+        <AppShell />
       </BrowserRouter>
-    </>
+    </AIAdvisorProvider>
   );
 }
 

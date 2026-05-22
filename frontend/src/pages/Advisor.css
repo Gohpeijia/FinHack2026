@@ -86,6 +86,7 @@
 .chat-window {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   background: var(--card-bg);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-lg);
@@ -160,6 +161,9 @@
 
 .bubble-text {
   white-space: pre-wrap;
+  overflow-wrap: break-word; /* Breaks long words to prevent overflow */
+  word-wrap: break-word;     /* Legacy fallback for older browsers */
+  word-break: break-word;    /* Ensures strict breaking inside the bubble */
 }
 
 /* ── File tag inside bubble ── */
@@ -250,6 +254,86 @@
   opacity: 1;
   background: #cce8e8;
 }
+
+/* ── Context preview bar (above input) ── */
+.context-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(26, 107, 107, 0.05);
+  border-left: 3px solid var(--teal);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.4rem 0.7rem 0.4rem 0.8rem;
+  margin-bottom: 0.45rem;
+  margin-top: 0;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.context-preview-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--teal);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.context-preview-text {
+  margin: 0;
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.context-preview-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  padding: 0.2rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.context-preview-remove:hover {
+  opacity: 1;
+  color: var(--teal);
+}
+
+/* ── Context quote inside chat bubbles ── */
+.bubble-context-quote {
+  display: block;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.75);
+  border-left: 2.5px solid rgba(255, 255, 255, 0.45);
+  padding: 0.18rem 0.55rem;
+  margin-bottom: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.bubble--assistant .bubble-context-quote {
+  color: var(--text-muted);
+  border-left-color: var(--teal);
+  background: rgba(26, 107, 107, 0.06);
+  border-radius: 0 3px 3px 0;
+}
+
 
 /* ── Input Bar ── */
 .input-bar {

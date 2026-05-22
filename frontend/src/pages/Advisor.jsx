@@ -1,28 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import '../shared.css';
 import './Advisor.css';
 import { FaPaperPlane, FaPaperclip, FaTimes, FaFileAlt, FaRobot } from 'react-icons/fa';
+import { useAIAdvisor } from './AIAdvisorContext';
 
 export default function Advisor() {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: "Assalamualaikum. Saya AI Penasihat Shariah anda.",
-    },
-  ]);
-  const [input, setInput] = useState('');
-  const [attachedFile, setAttachedFile] = useState(null);
-  const [fileContent, setFileContent] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const fileInputRef = useRef(null);
-  const chatEndRef = useRef(null);
-  const textareaRef = useRef(null);
+  const { messages, loading, sendMessage, highlightedContext, setHighlightedContext } = useAIAdvisor();
 
+  const [input, setInput]               = useState('');
+  const [attachedFile, setAttachedFile] = useState(null);
+  const [fileContent, setFileContent]   = useState(null);
+
+  const fileInputRef = useRef(null);
+  const chatEndRef   = useRef(null);
+  const textareaRef  = useRef(null);
+
+  /* ── Auto-scroll ── */
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  // Auto-resize textarea
+  /* ── Auto-resize textarea ── */
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -30,11 +28,20 @@ export default function Advisor() {
     ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
   }, [input]);
 
+  /* ── Robust File handling ── */
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setAttachedFile(file);
 
+    // SECURITY FIX: Prevent browser memory exhaustion and server crashes
+    const MAX_SIZE = 5 * 1024 * 1024; // 5 Megabytes limit
+    if (file.size > MAX_SIZE) {
+      alert("File size exceeds 5MB limit. Please upload a smaller document.");
+      e.target.value = '';
+      return;
+    }
+
+    setAttachedFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setFileContent(ev.target.result.split(',')[1]);
     reader.readAsDataURL(file);
@@ -46,59 +53,29 @@ export default function Advisor() {
     setFileContent(null);
   };
 
-  const sendMessage = async () => {
+  /* ── Send ── */
+  const handleSend = async () => {
     const text = input.trim();
-    if (!text && !attachedFile) return;
+    if (!text && !attachedFile && !highlightedContext) return;
 
-    const userMsg = {
-      role: 'user',
-      content: text,
-      fileName: attachedFile?.name || null,
-    };
-
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
-    setInput('');
-    setLoading(true);
-
-    const b64 = fileContent;
+    const b64   = fileContent;
     const fname = attachedFile?.name;
-    
+
+    setInput('');
     setAttachedFile(null);
     setFileContent(null);
 
-    try {
-      const response = await fetch('/api/shariah-advisor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: text,
-          fileData: b64,
-          fileName: fname,
-          history: updatedMessages
-        }),
-      });
-
-      if (!response.ok) throw new Error('Server responded with an error');
-
-      const data = await response.json();
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }]);
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: 'An error occurred. Please check your connection and try again.' },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+    await sendMessage({ text, fileData: b64, fileName: fname });
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSend();
     }
   };
+
+  const canSend = (input.trim() || attachedFile || highlightedContext) && !loading;
 
   return (
     <div className="advisor-page">
@@ -108,13 +85,15 @@ export default function Advisor() {
           <h1 className="advisor-main-title">AI Shariah Advisor</h1>
           <p className="advisor-subtitle">Islamic Finance &amp; Zakat Guidance</p>
         </div>
-        {/* Status indicator badge block completely removed from here */}
       </div>
 
       {/* Chat Window */}
       <div className="chat-window">
         {messages.map((msg, i) => (
-          <div key={i} className={`message-row ${msg.role === 'user' ? 'message-row--user' : 'message-row--assistant'}`}>
+          <div
+            key={i}
+            className={`message-row ${msg.role === 'user' ? 'message-row--user' : 'message-row--assistant'}`}
+          >
             {msg.role === 'assistant' && (
               <div className="avatar avatar--assistant">
                 <FaRobot size={16} />
@@ -122,6 +101,13 @@ export default function Advisor() {
             )}
 
             <div className={`bubble ${msg.role === 'user' ? 'bubble--user' : 'bubble--assistant'}`}>
+              {/* ChatGPT-style context text block placement inside the conversation log */}
+              {msg.highlightedText && (
+                <div className="bubble-context-quote">
+                  Context: "{msg.highlightedText}"
+                </div>
+              )}
+              
               {msg.fileName && (
                 <div className="bubble-file-tag">
                   <FaFileAlt size={12} />
@@ -148,6 +134,17 @@ export default function Advisor() {
 
         <div ref={chatEndRef} />
       </div>
+
+      {/* Context quote preview bar */}
+      {highlightedContext && (
+        <div className="context-preview-bar">
+          <span className="context-preview-label">Context</span>
+          <span className="context-preview-text">"{highlightedContext}"</span>
+          <button className="context-preview-remove" onClick={() => setHighlightedContext(null)} aria-label="Remove context">
+            <FaTimes size={12} />
+          </button>
+        </div>
+      )}
 
       {/* Attached File Preview */}
       {attachedFile && (
@@ -190,9 +187,9 @@ export default function Advisor() {
         />
 
         <button
-          className={`input-btn input-btn--send ${(input.trim() || attachedFile) && !loading ? 'input-btn--send-active' : ''}`}
-          onClick={sendMessage}
-          disabled={(!input.trim() && !attachedFile) || loading}
+          className={`input-btn input-btn--send ${canSend ? 'input-btn--send-active' : ''}`}
+          onClick={handleSend}
+          disabled={!canSend}
           aria-label="Send message"
         >
           <FaPaperPlane size={15} />

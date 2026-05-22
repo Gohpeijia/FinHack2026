@@ -8,12 +8,13 @@
 /* ── Stocks Page Layout ── */
 .stocks-page {
   display: flex;
+  width: 100%;       /* Explicitly stretch to fill container */
   height: 100vh;
   overflow: hidden;
   font-family: 'DM Sans', system-ui, sans-serif;
   color: var(--text-primary);
   background: var(--bg);
-  margin-left: 60px
+  
 }
 
 /* ── Side Panel ── */
@@ -101,12 +102,13 @@
 
 /* ── Main Dashboard Area ── */
 .stocks-main {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.8rem 2rem 3rem;
+  flex: 1;                  /* Forces it to grow and fill all space between sidebars */
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  overflow-y: auto;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  width: 100%;              /* Ensure it fills the flex-container parent */
 }
 
 .stocks-main::-webkit-scrollbar { width: 6px; }

@@ -284,18 +284,6 @@ export default function Auth() {
           {!googleLoading && 'Google'}
         </button>
 
-        {/* Footer note */}
-        <p className="auth-footer-note">
-          {isSignUp
-            ? 'Dengan mendaftar, anda bersetuju dengan terma perkhidmatan kami.'
-            : 'Belum ada akaun? '}
-          {!isSignUp && (
-            <a href="#" onClick={e => { e.preventDefault(); setMode('signup'); setError(''); }}>
-              Daftar sekarang
-            </a>
-          )}
-        </p>
-
       </div>
     </div>
   );
