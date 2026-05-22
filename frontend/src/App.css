@@ -12,6 +12,8 @@ nav{
     gap: 20px;
     box-shadow: var(--shadow);
     box-sizing: border-box;
+    z-index: 20;
+    transition: width 0.2s ease, padding 0.2s ease;
 }
 
 nav a{
@@ -31,37 +33,61 @@ nav a{
 .nav-logout{
     margin-bottom: 0;
     margin-top: auto;
-
 }
 
-.nav-zakat:hover, .nav-dashboard:hover, .nav-advisor:hover, .nav-logout:hover {
+.nav-zakat:hover,
+.nav-dashboard:hover,
+.nav-advisor:hover,
+.nav-logout:hover,
+.nav-stocks:hover {
     background-color: var(--teal-light);
     color: var(--teal-dark);
-    
-
 }
 
-/* Existing nav styles... */
+/* ── Icon-only mode (used on /stocks page) ── */
+nav.nav-icon-only {
+    width: 60px;
+    padding: 20px 5px;
+}
 
-/* Add this media query at the end of your App.css */
+nav.nav-icon-only a {
+    justify-content: center;
+    padding: 10px 0;
+}
+
+/* Responsive: collapse to icon-only on small screens */
 @media (max-width: 768px) {
     nav {
-        width: 60px; /* Sidebar shrinks to icon width */
+        width: 60px;
         padding: 20px 5px;
     }
 
-    /* Hide the text labels when the screen is small */
-   nav a {
-        justify-content: center; /* Centers the icon */
-        padding: 10px 0; /* Remove horizontal padding */
+    nav a {
+        justify-content: center;
+        padding: 10px 0;
     }
 
     nav a span {
-        display: none; /* Removes text completely */
+        display: none;
     }
 
-    /* Keep the icon visible */
     nav a svg {
         font-size: 1.2rem;
+    }
+}
+
+/* 
+  Page content offset — push pages right of the nav.
+  The stocks page overrides this because it manages its own layout.
+*/
+.app-container {
+    margin-left: 200px;
+    padding: 2rem;
+    transition: margin-left 0.2s ease;
+}
+
+@media (max-width: 768px) {
+    .app-container {
+        margin-left: 60px;
     }
 }
