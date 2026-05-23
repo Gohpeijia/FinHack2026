@@ -5,6 +5,7 @@ import ZakatCalculator from './ZakatCalculator';
 import ZakatNisab from './ZakatNisab';
 import ZakatLiabiliti from './ZakatLiabiliti';
 import Zakatbleamount from './Zakatbleamount';
+import ZakatGoals from './ZakatGoals';   // ← NEW
 import './Zakat.css';
 import '../shared.css';
 
@@ -45,6 +46,7 @@ export default function Zakat() {
 
       {/* Section 2: Jumlah Bersih (Aset - Liabiliti) */}
       <Zakatbleamount totalAsset={totalAsset} totalLiability={totalLiability} nisabAmount={nisabAmount} />
+
       {/* Section 5: Ringkasan Zakat */}
       <ZakatRingkasan 
         nisabAmount={nisabAmount}
@@ -58,6 +60,8 @@ export default function Zakat() {
       {/* Section 4: Jumlah Liabiliti */}
       <ZakatLiabiliti onTotalChange={setTotalLiability} />
 
+      {/* Section 6: Matlamat Kewangan ← NEW */}
+      <ZakatGoals />
     </div>
   );
 }
