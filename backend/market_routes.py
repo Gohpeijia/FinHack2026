@@ -1,13 +1,13 @@
-# market_routes.py
 import os
 import requests
 from flask import Blueprint, jsonify, request
 from security import require_auth
 from shariah_filter import check_shariah_compliance
+
+# 🟢 FIX: We are now exclusively importing the updated "rich" functions!
 from finnhub_service import get_rich_market_quote, get_company_fundamentals, get_historical_candles
 
 market_bp = Blueprint('market', __name__)
-
 
 @market_bp.route('/details/<ticker>', methods=['GET'])
 @require_auth
@@ -33,13 +33,13 @@ def get_stock_details(ticker):
                 "ticker":          ticker,
                 "price":           quote["price"],
                 
-                # --- The New Dual-Percentage Data ---
+                # --- Dual-Percentage & Market Data ---
                 "change":                quote["change"],
                 "changePercent":         quote["changePercent"],
                 "changeFromOpen":        quote["changeFromOpen"],
                 "changePercentFromOpen": quote["changePercentFromOpen"],
                 "marketStatus":          quote["marketStatus"],
-                # ------------------------------------
+                # -------------------------------------
                 
                 "high":            quote["high"],
                 "low":             quote["low"],
@@ -57,7 +57,6 @@ def get_stock_details(ticker):
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 @market_bp.route('/all', methods=['GET'])
 @require_auth
@@ -81,15 +80,22 @@ def get_dynamic_halal_stocks():
                 continue
 
             quote = get_rich_market_quote(ticker)
-            compliant_stocks.append({
-                "ticker":        ticker,
-                "name":          stock['description'],
-                "price":         quote["price"]         if quote else None,
-                "change":        quote["change"]        if quote else None,
-                "changePercent": quote["changePercent"] if quote else None,
-                "isHalal":       True,
-                "reason":        compliance['reason'],
-            })
+            if quote:
+                compliant_stocks.append({
+                    "ticker":        ticker,
+                    "name":          stock['description'],
+                    "price":         quote["price"],
+                    
+                    # --- Dual-Percentage & Market Data for the List ---
+                    "change":                quote["change"],
+                    "changePercent":         quote["changePercent"],
+                    "changeFromOpen":        quote["changeFromOpen"],
+                    "changePercentFromOpen": quote["changePercentFromOpen"],
+                    "marketStatus":          quote["marketStatus"],
+                    
+                    "isHalal":       True,
+                    "reason":        compliance['reason'],
+                })
 
         return jsonify({
             "success": True,
@@ -100,8 +106,6 @@ def get_dynamic_halal_stocks():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-
-# ✅ Only one definition of this route
 @market_bp.route('/search', methods=['GET'])
 @require_auth
 def search_stock_possibilities():
