@@ -132,4 +132,4 @@ def search_stock_possibilities():
         return jsonify({"success": True, "data": possibilities})
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 50
