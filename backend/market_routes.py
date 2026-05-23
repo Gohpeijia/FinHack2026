@@ -32,6 +32,8 @@ def get_stock_details(ticker):
             "success": True,
             "data": {
                 "ticker":                ticker,
+                "name":                  fundamentals.get("name", ticker), 
+                "exchange":              fundamentals.get("exchange", "US"), 
                 "price":                 quote["price"],
                 "change":                quote["change"],
                 "changePercent":         quote["changePercent"],
@@ -42,10 +44,24 @@ def get_stock_details(ticker):
                 "low":                   quote["low"],
                 "open":                  quote["open"],
                 "previousClose":         quote["previousClose"],
-                "peRatio":               fundamentals["peRatio"],
-                "marketCap":             fundamentals["marketCap"],
-                "netProfitMargin":       fundamentals["netProfitMargin"],
-                "debtToEquity":          fundamentals["debtToEquity"],
+                
+                # Fundamentals
+                "peRatio":               fundamentals.get("peRatio"),
+                "marketCap":             fundamentals.get("marketCap"),
+                "netProfitMargin":       fundamentals.get("netProfitMargin"),
+                "debtToEquity":          fundamentals.get("debtToEquity"),
+                "sector":                fundamentals.get("sector"),
+                "industry":              fundamentals.get("industry"),
+                "dividendYield":         fundamentals.get("dividendYield"),
+                "dividendRate":          fundamentals.get("dividendRate"),
+                "eps":                   fundamentals.get("eps"),
+                "beta":                  fundamentals.get("beta"),
+                "avgVolume":             fundamentals.get("avgVolume"),
+                "fiftyTwoWeekHigh":      fundamentals.get("fiftyTwoWeekHigh"),
+                "fiftyTwoWeekLow":       fundamentals.get("fiftyTwoWeekLow"),
+                "lotSize":               fundamentals.get("lotSize"),
+                
+                # Shariah
                 "isHalal":               is_halal["isHalal"],
                 "complianceReason":      is_halal["reason"],
             }

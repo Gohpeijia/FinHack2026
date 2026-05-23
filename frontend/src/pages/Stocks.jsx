@@ -70,8 +70,8 @@ async function apiFetchStockData(ticker) {
 
   const quote = {
     ticker:     d.ticker,
-    name:       d.ticker,   // Finnhub /details doesn't return a display name; ticker is fine here
-    exchange:   'US',
+    name:       d.name,     // <-- Fixes the name issue!
+    exchange:   d.exchange,
     price:      d.price,
     change:     d.change,
     changePct:  d.changePercent,
@@ -79,14 +79,22 @@ async function apiFetchStockData(ticker) {
   };
 
   const details = {
-    // Shariah compliance shown as "Sector" field
-    sector:      d.isHalal ? 'Patuh Syariah ✅' : 'Tidak Patuh Syariah ❌',
-    reason:      d.complianceReason,
-    marketCap:   d.marketCap   ? `$${(d.marketCap / 1000).toFixed(2)}B` : '—',
-    peRatio:     d.peRatio     ? d.peRatio.toFixed(2)                   : '—',
-    dividendYield: '—',        // Finnhub free tier doesn't reliably provide this
-    debtToEquity:  d.debtToEquity ? `${d.debtToEquity.toFixed(2)}%`    : '—',
-    netProfitMargin: d.netProfitMargin ? `${d.netProfitMargin.toFixed(2)}%` : '—',
+    shariahStatus:   d.isHalal ? 'Patuh Syariah ✅' : 'Tidak Patuh Syariah ❌',
+    reason:          d.complianceReason,
+    sector:          d.sector || '—',
+    industry:        d.industry || '—',
+    marketCap:       d.marketCap ? `$${(d.marketCap / 1000).toFixed(2)}B` : '—',
+    peRatio:         d.peRatio ? d.peRatio.toFixed(2) : '—',
+    dividendYield:   d.dividendYield ? `${d.dividendYield}%` : '—',
+    dividend:        d.dividendRate ? `$${d.dividendRate.toFixed(2)}` : '—',
+    eps:             d.eps ? d.eps.toFixed(2) : '—',
+    beta:            d.beta ? d.beta.toFixed(2) : '—',
+    avgVolume:       d.avgVolume ? d.avgVolume.toLocaleString() : '—',
+    fiftyTwoWeekHigh:d.fiftyTwoWeekHigh ? `$${d.fiftyTwoWeekHigh.toFixed(2)}` : '—',
+    fiftyTwoWeekLow: d.fiftyTwoWeekLow ? `$${d.fiftyTwoWeekLow.toFixed(2)}` : '—',
+    debtToEquity:    d.debtToEquity ? `${d.debtToEquity}%` : '—',
+    netProfitMargin: d.netProfitMargin ? `${d.netProfitMargin}%` : '—',
+    lotSize:         d.lotSize || 100,
   };
 
   return { quote, details };

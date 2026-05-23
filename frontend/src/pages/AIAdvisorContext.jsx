@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-// IMPORT YOUR FIREBASE AUTH HERE (adjust the path if needed)
 import { auth } from '../firebase'; 
 
 const AIAdvisorContext = createContext(null);
@@ -12,52 +11,34 @@ const INITIAL_MESSAGES = [
 ];
 
 export function AIAdvisorProvider({ children }) {
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
+  // 1. Initialize state directly from sessionStorage if it exists
+  const [messages, setMessages] = useState(() => {
+    const savedHistory = sessionStorage.getItem('chat_history');
+    return savedHistory ? JSON.parse(savedHistory) : INITIAL_MESSAGES;
+  });
   const [loading, setLoading]   = useState(false);
   const [highlightedContext, setHighlightedContext] = useState(null);
 
-  // Grouping messages into a daily session (matches backend fallback)
   const [conversationId] = useState(() => {
-    return new Date().toISOString().split('T')[0]; // e.g., "2026-05-23"
+    return new Date().toISOString().split('T')[0]; 
   });
 
-  // ── Load Chat History on Login ──
+  // 2. Sync history to sessionStorage whenever messages state updates
   useEffect(() => {
-    const fetchHistory = async (user) => {
-      try {
-        const token = await user.getIdToken();
-        const response = await fetch(`http://localhost:5000/api/aiagent/ai/history?session_id=${conversationId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        const data = await response.json();
-        if (data.success && data.history && data.history.length > 0) {
-          // Format backend history to match frontend expectations
-          const formattedHistory = data.history.map(msg => ({
-            role: msg.role, // 'user' or 'ai/assistant'
-            content: msg.content
-          }));
-          setMessages([...INITIAL_MESSAGES, ...formattedHistory]);
-        }
-      } catch (error) {
-        console.error("Failed to load chat history:", error);
-      }
-    };
+    sessionStorage.setItem('chat_history', JSON.stringify(messages));
+  }, [messages]);
 
-    // Listen for auth state changes so history loads right after login
+  // 3. Listen for auth state changes to wipe history ONLY on logout
+  useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        fetchHistory(user);
-      } else {
-        setMessages(INITIAL_MESSAGES); // Clear if logged out
+      if (!user) {
+        sessionStorage.removeItem('chat_history'); 
+        setMessages(INITIAL_MESSAGES); 
       }
     });
 
     return () => unsubscribe();
-  }, [conversationId]);
+  }, []);
 
   const sendMessage = useCallback(async ({ text, fileData, fileName }) => {
     if (!text && !fileData && !highlightedContext) return;
@@ -72,21 +53,23 @@ export function AIAdvisorProvider({ children }) {
     const textContextSnapshot = highlightedContext;
     setHighlightedContext(null);
 
-    setMessages(prev => [...prev, userMsg]);
+    // Capture the updated state array safely to pass to the backend call
+    const updatedHistory = [...messages, userMsg];
+    setMessages(updatedHistory);
 
     _callBackend(
       conversationId,
-      { text, fileData, fileName, highlightedText: textContextSnapshot },
+      { text, fileData, fileName, highlightedText: textContextSnapshot, chatHistory: updatedHistory },
       setMessages,
       setLoading
     );
     
-  }, [conversationId, highlightedContext]);
+  }, [conversationId, highlightedContext, messages]);
 
   const clearMessages = useCallback(() => {
+    sessionStorage.removeItem('chat_history');
     setMessages(INITIAL_MESSAGES);
     setHighlightedContext(null);
-    // Optional: Add logic here to call the DELETE /history backend route if you want to wipe the DB too
   }, []);
 
   return (
@@ -104,7 +87,7 @@ export function AIAdvisorProvider({ children }) {
 }
 
 /** Internal helper — Server communication handler */
-async function _callBackend(conversationId, { text, fileData, fileName, highlightedText }, setMessages, setLoading) {
+async function _callBackend(conversationId, { text, fileData, fileName, highlightedText, chatHistory }, setMessages, setLoading) {
   setLoading(true);
   try {
     const user = auth.currentUser;
@@ -112,20 +95,26 @@ async function _callBackend(conversationId, { text, fileData, fileName, highligh
 
     const token = await user.getIdToken();
 
+    // Clean up history fields to only send what the AI agent relies on
+    const cleanHistory = chatHistory.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
     const payload = {
       session_id: conversationId,
       message: text,
       pageContext: highlightedText || "Unknown Page", 
       fileData: fileData,  
-      fileName: fileName
+      fileName: fileName,
+      chat_history: cleanHistory // 4. Passing browser-managed history here
     };
 
-    // Make sure the URL matches your Flask server port (usually 5000)
     const response = await fetch('http://localhost:5000/api/aiagent/ai/chat', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` // Sends auth to @require_auth
+        'Authorization': `Bearer ${token}` 
       },
       body: JSON.stringify(payload),
     });

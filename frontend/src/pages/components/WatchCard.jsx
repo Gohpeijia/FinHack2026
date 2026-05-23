@@ -62,8 +62,8 @@ const WatchCard = memo(function WatchCard({
       )}
 
       <div className="watch-card-body">
-        <span className="watch-card-ticker">{ticker}</span>
-        <span className="watch-card-name">{name}</span>
+        <span className="watch-card-ticker">{name}</span>
+        <span className="watch-card-name">{ticker}</span>
       </div>
 
       <div className="watch-card-right">

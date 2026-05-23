@@ -70,11 +70,11 @@ def get_rich_market_quote(ticker: str) -> dict:
 
 
 def get_company_fundamentals(ticker: str) -> dict:
-    """P/E ratio, market cap, net profit margin, debt-to-equity."""
-   
+    """P/E ratio, market cap, net profit margin, debt-to-equity, and more."""
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
+        
         # Format Market Cap to Millions (M) to match old code
         market_cap_raw = info.get('marketCap', 0)
         market_cap_m = round(market_cap_raw / 1_000_000, 2) if market_cap_raw else 0
@@ -83,18 +83,30 @@ def get_company_fundamentals(ticker: str) -> dict:
         margin = info.get('profitMargins', 0)
         margin_pct = round(margin * 100, 2) if margin else 0
 
-        # Debt to equity is usually a percentage in Yahoo
         debt_equity = info.get('debtToEquity', 0)
 
+        # Grab all the new info we need
         return {
-            "peRatio": round(info.get('trailingPE', 0), 2),
+            "name": info.get('shortName') or info.get('longName') or ticker,
+            "exchange": info.get('exchange', 'US'),
+            "peRatio": round(info.get('trailingPE', 0), 2) if info.get('trailingPE') else None,
             "marketCap": market_cap_m,
             "netProfitMargin": margin_pct,
-            "debtToEquity": round(debt_equity, 2)
+            "debtToEquity": round(debt_equity, 2) if debt_equity else None,
+            "sector": info.get('sector', 'N/A'),
+            "industry": info.get('industry', 'N/A'),
+            "dividendYield": round(info.get('dividendYield', 0) * 100, 2) if info.get('dividendYield') else None,
+            "dividendRate": info.get('dividendRate', None),
+            "eps": info.get('trailingEps', None),
+            "beta": round(info.get('beta', 0), 2) if info.get('beta') else None,
+            "avgVolume": info.get('averageVolume', None),
+            "fiftyTwoWeekHigh": info.get('fiftyTwoWeekHigh', None),
+            "fiftyTwoWeekLow": info.get('fiftyTwoWeekLow', None),
+            "lotSize": 100 # Standard size for US/Bursa markets
         }
     except Exception as e:
         print(f"❌ [Yahoo Finance] Fundamental Error for {ticker}: {e}")
-        return {"peRatio": 0, "marketCap": 0, "netProfitMargin": 0, "debtToEquity": 0}
+        return {"name": ticker, "peRatio": 0, "marketCap": 0, "netProfitMargin": 0, "debtToEquity": 0}
 
 def get_historical_candles(ticker: str, timeframe: str = '1M') -> list:
     try:

@@ -83,15 +83,18 @@ def chat_with_agent():
 
         print(f"🤖 [API] User={user_id} | Session={session_id} | Page={page_context} | Message={user_message}")
 
-        # 1. Save user message
-        _save_message(user_id, session_id, role="user", content=user_message, ticker=ticker)
+        # 1. Fetch user metadata profile context
         user_doc = db.collection("users").document(user_id).get()
         user_data = user_doc.to_dict() if user_doc.exists else {}
-
-        # 2. Load conversation history + preferences
-        chat_history = _load_history(user_id, session_id, limit=20)
         preferences  = _get_preferences(user_id)
         tabung_goal  = user_data.get("tabung_goal", None)
+
+        # 2. Extract chat history directly from frontend payload instead of Firestore
+        chat_history = data.get('chat_history', [])
+        
+        # Guardrails: limit history payload size to last 20 items max
+        if len(chat_history) > 20:
+            chat_history = chat_history[-20:]
 
         # 3. Run the AI agent
         result = agent.process(
@@ -106,8 +109,7 @@ def chat_with_agent():
         if result.get("status") == "ERROR":
             return jsonify({"success": False, "error": result["final_advice"]}), 503
 
-        # 4. Save the AI response (Using "assistant" to match React UI expectations)
-        _save_message(user_id, session_id, role="assistant", content=result["final_advice"], ticker=ticker)
+        # NOTE: Firestore persistence removed here to ensure browser-scoped privacy constraints
 
         return jsonify({
             "success":    True,

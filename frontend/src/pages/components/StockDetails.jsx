@@ -12,16 +12,19 @@ import React, { memo } from 'react';
  *  loading: bool
  */
 const FIELDS = [
+  { key: 'shariahStatus',   label: 'Status Syariah' },
   { key: 'sector',          label: 'Sektor' },
   { key: 'industry',        label: 'Industri' },
   { key: 'marketCap',       label: 'Modal Pasaran' },
   { key: 'peRatio',         label: 'Nisbah PE' },
-  { key: 'dividendYield',   label: 'Hasil Dividen' },
+  { key: 'dividendYield',   label: 'Hasil Dividen (%)' },
+  { key: 'dividend',        label: 'Dividen ($)' },
   { key: 'eps',             label: 'EPS' },
   { key: 'beta',            label: 'Beta' },
   { key: 'avgVolume',       label: 'Purata Volum' },
   { key: 'fiftyTwoWeekHigh',label: 'Tinggi 52M' },
   { key: 'fiftyTwoWeekLow', label: 'Rendah 52M' },
+  { key: 'lotSize',         label: 'Saiz Lot' },
 ];
 
 const StockDetails = memo(function StockDetails({ details, loading }) {
