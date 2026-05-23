@@ -99,6 +99,7 @@ def get_stock_detail(ticker):
     try:
         ticker    = ticker.upper()
         timeframe = request.args.get('timeframe', '1M').upper()  # default: 1 month
+        
 
         # 1. Live quote — price, change, change%, OHLC
         quote = get_rich_market_quote(ticker)
@@ -107,6 +108,7 @@ def get_stock_detail(ticker):
                 "success": False,
                 "error":   f"Could not fetch data for {ticker}. Check the ticker symbol."
             }), 404
+        
 
         # 2. Fundamentals — P/E, Market Cap, Net Margin, D/E
         fundamentals = get_company_fundamentals(ticker)
@@ -123,6 +125,7 @@ def get_stock_detail(ticker):
             chart_data      = _get_weekly_candles(ticker)
             chart_label     = "Past 30 Days (Daily)"
             timeframe       = '1M'
+        
 
         # 4. Compute value change over the chart window
         #    (last candle value vs first candle value)
@@ -148,6 +151,7 @@ def get_stock_detail(ticker):
                 "low":            quote["low"],
                 "open":           quote["open"],
                 "previousClose":  quote["previousClose"],
+                "volume":         quote.get("v"),
 
                 # ── Period performance (based on chart window) ──────────────
                 "periodChange":    period_change,
@@ -155,10 +159,20 @@ def get_stock_detail(ticker):
                 "chartLabel":      chart_label,
 
                 # ── Fundamentals ────────────────────────────────────────────
-                "peRatio":         fundamentals["peRatio"],
-                "marketCap":       fundamentals["marketCap"],
-                "netProfitMargin": fundamentals["netProfitMargin"],
-                "debtToEquity":    fundamentals["debtToEquity"],
+                "peRatio":         fundamentals.get("peRatio"),
+                "marketCap":       fundamentals.get("marketCap"),
+                "netProfitMargin": fundamentals.get("netProfitMargin"),
+                "debtToEquity":    fundamentals.get("debtToEquity"),
+                "eps":             fundamentals.get("eps"),
+                "beta":            fundamentals.get("beta"),
+                "dividendYield":   fundamentals.get("dividendYield"),
+                "high52":          fundamentals.get("52WeekHigh"),
+                "low52":           fundamentals.get("52WeekLow"),
+                "sector":          fundamentals.get("sector"),
+                "industry":        fundamentals.get("industry"),
+                "dividendAmount":fundamentals.get("dividendPerShareAnnual"),
+                "high52":          fundamentals.get("52WeekHigh"),
+                "low52":           fundamentals.get("52WeekLow"),
 
                 # ── Chart ───────────────────────────────────────────────────
                 "chartData":       chart_data,
@@ -432,12 +446,21 @@ def manage_goal():
     try:
         data           = request.json
         secure_user_id = g.uid
-        goal_title     = data.get('goaltitle', '').strip()
-        target_date    = data.get('date', '').strip()
+        
+        # Safely handle null strings
+        raw_title      = data.get('goaltitle')
+        goal_title     = str(raw_title).strip() if raw_title else ''
+        
+        raw_date       = data.get('date')
+        target_date    = str(raw_date).strip() if raw_date else ''
+
+        # THE FIX: Safely handle 'None' (null) values from frontend so float() doesn't crash
+        def safe_float(val):
+            return float(val) if val is not None else 0.0
 
         try:
-            total_amount    = float(data.get('totalamount', 0.0))
-            total_gathered  = float(data.get('totalgatheredamount', 0.0))
+            total_amount    = safe_float(data.get('totalamount'))
+            total_gathered  = safe_float(data.get('totalgatheredamount'))
         except ValueError:
             return jsonify({"success": False, "error": "Amounts must be valid numbers"}), 400
 

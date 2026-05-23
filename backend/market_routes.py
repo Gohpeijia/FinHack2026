@@ -108,34 +108,36 @@ def get_stock_chart(ticker):
 @require_auth
 def search_stock_possibilities():
     try:
-        query = request.args.get('q', '').upper()
+        query = request.args.get('q', '').strip()
         if not query:
             return jsonify({"success": True, "data": []})
 
-        # 🟢 Use Yahoo Finance's public search API (No API key needed!)
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={query}"
-        
+        # Yahoo Finance search endpoint (no API key needed)
+        url = f"https://query1.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=10&newsCount=0"
+        headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(url, headers=headers, timeout=5)
-        search_results = response.json().get('quotes', [])
+        quotes = response.json().get("quotes", [])
 
         possibilities = []
-        for stock in search_results[:10]:
-            symbol = stock.get('symbol', '')
-            # Skip empty symbols or cryptocurrency for this app
-            if not symbol or '=' in symbol or '-' in symbol:
+        for stock in quotes:
+            symbol   = stock.get("symbol", "")
+            name     = stock.get("longname") or stock.get("shortname", "")
+            typeCode = stock.get("quoteType", "")
+
+            # Only include equities and ETFs, skip futures/forex/crypto
+            if typeCode not in ("EQUITY", "ETF"):
                 continue
-                
+            if not symbol or not name:
+                continue
+
             possibilities.append({
-                "ticker":   symbol,
-                "name":     stock.get('shortname') or stock.get('longname') or symbol,
-                "exchange": stock.get('exchDisp') or stock.get('exchange') or 'US',
+                "ticker": symbol,
+                "name":   name,
             })
 
-        return jsonify({"success": True, "data": possibilities})
+        return jsonify({"success": True, "data": possibilities[:10]})
 
     except Exception as e:
-        print(f"❌ Search Error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 

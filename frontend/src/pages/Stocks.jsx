@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './stocks.css';
 
 import { db, auth } from '../firebase';
@@ -70,8 +70,8 @@ async function apiFetchStockData(ticker) {
 
   const quote = {
     ticker:     d.ticker,
-    name:       d.name,     // <-- Fixes the name issue!
-    exchange:   d.exchange,
+    name:       d.ticker,   // Finnhub /details doesn't return a display name; ticker is fine here
+    exchange:   'US',
     price:      d.price,
     change:     d.change,
     changePct:  d.changePercent,
@@ -79,22 +79,24 @@ async function apiFetchStockData(ticker) {
   };
 
   const details = {
-    shariahStatus:   d.isHalal ? 'Patuh Syariah ✅' : 'Tidak Patuh Syariah ❌',
-    reason:          d.complianceReason,
-    sector:          d.sector || '—',
-    industry:        d.industry || '—',
-    marketCap:       d.marketCap ? `$${(d.marketCap / 1000).toFixed(2)}B` : '—',
-    peRatio:         d.peRatio ? d.peRatio.toFixed(2) : '—',
-    dividendYield:   d.dividendYield ? `${d.dividendYield}%` : '—',
-    dividend:        d.dividendRate ? `$${d.dividendRate.toFixed(2)}` : '—',
-    eps:             d.eps ? d.eps.toFixed(2) : '—',
-    beta:            d.beta ? d.beta.toFixed(2) : '—',
-    avgVolume:       d.avgVolume ? d.avgVolume.toLocaleString() : '—',
-    fiftyTwoWeekHigh:d.fiftyTwoWeekHigh ? `$${d.fiftyTwoWeekHigh.toFixed(2)}` : '—',
-    fiftyTwoWeekLow: d.fiftyTwoWeekLow ? `$${d.fiftyTwoWeekLow.toFixed(2)}` : '—',
-    debtToEquity:    d.debtToEquity ? `${d.debtToEquity}%` : '—',
-    netProfitMargin: d.netProfitMargin ? `${d.netProfitMargin}%` : '—',
-    lotSize:         d.lotSize || 100,
+    statusSyariah: d.isHalal !== undefined ? (d.isHalal ? 'Patuh Syariah ✅' : 'Tidak Patuh Syariah ❌') : '—',
+    sector:        d.sector || '—',
+    industry:      d.industry || '—',
+    marketCap:     d.marketCap ? `$${(d.marketCap / 1000).toFixed(2)}B` : '—',
+    peRatio:       d.peRatio ? d.peRatio.toFixed(2) : '—',
+    eps:           d.eps !== undefined && d.eps !== null ? d.eps.toFixed(2) : '—',
+    beta:          d.beta !== undefined && d.beta !== null ? d.beta.toFixed(2) : '—',
+    
+    // 1. ADDED BACK: Hasil Dividen (%)
+    dividendYield: d.dividendYield !== undefined && d.dividendYield !== null ? `${Number(d.dividendYield).toFixed(2)}%` : '—',
+    
+    // 2. FIXED: Checking for undefined/null so $0 dividends and 0 metrics still display correctly
+    dividendAmount: d.dividendAmount !== undefined && d.dividendAmount !== null ? `$${Number(d.dividendAmount).toFixed(2)}` : '—',
+    volume:         d.volume !== undefined && d.volume !== null ? Number(d.volume).toLocaleString() : '—',
+    high52:         d.high52 !== undefined && d.high52 !== null ? `$${Number(d.high52).toFixed(2)}` : '—',
+    low52:          d.low52 !== undefined && d.low52 !== null ? `$${Number(d.low52).toFixed(2)}` : '—',
+    
+    lotSize:        '100', 
   };
 
   return { quote, details };
@@ -127,6 +129,7 @@ async function apiFetchChart(ticker, period) {
    ───────────────────────────────────────────────────────────────────────────── */
 export default function Stocks() {
   const [watchlist,     setWatchlist]     = useState([]);
+  const watchlistLoaded = useRef(false); 
   const [activeTicker,  setActiveTicker]  = useState(null);
   const [errorMsg,      setErrorMsg]      = useState(null);
 
@@ -156,8 +159,11 @@ export default function Stocks() {
           }
         } catch (err) {
           console.error('Failed to load watchlist:', err);
+        }finally {
+          watchlistLoaded.current = true;
         }
       } else {
+        watchlistLoaded.current = false;
         setWatchlist([]);
       }
     });
@@ -166,7 +172,7 @@ export default function Stocks() {
 
   /* ── Firebase: save watchlist whenever it changes ── */
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser || !watchlistLoaded.current) return;
     const docRef = doc(db, 'users', auth.currentUser.uid);
     setDoc(docRef, { watchlist }, { merge: true }).catch(err =>
       console.error('Failed to save watchlist:', err)

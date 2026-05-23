@@ -98,13 +98,19 @@ async function _callBackend(conversationId, { text, fileData, fileName, highligh
     // Clean up history fields to only send what the AI agent relies on
     const cleanHistory = chatHistory.map(msg => ({
       role: msg.role,
-      content: msg.content
+      content: msg.highlightedText 
+        ? `[Teks Rujukan: "${msg.highlightedText}"]\nSoalan: ${msg.content}` 
+        : msg.content
     }));
+
+    const formattedMessage = highlightedText
+      ? `[Teks Rujukan: "${highlightedText}"]\nSoalan: ${text}`
+      : text;
 
     const payload = {
       session_id: conversationId,
-      message: text,
-      pageContext: highlightedText || "Unknown Page", 
+      message: formattedMessage,
+      pageContext: window.location.pathname || "Aplikasi Zakat/Pelaburan",
       fileData: fileData,  
       fileName: fileName,
       chat_history: cleanHistory // 4. Passing browser-managed history here
