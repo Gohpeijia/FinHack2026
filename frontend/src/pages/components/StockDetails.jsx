@@ -25,16 +25,17 @@ const FIELDS = [
 ];
 
 const StockDetails = memo(function StockDetails({ details, loading }) {
+  if (loading) return <div className="stock-details-card">Loading...</div>;
+  if (!details) return null;
+
   return (
     <div className="stock-details-card">
       <h3 className="details-title">Company Details</h3>
       <div className="details-grid">
-        {FIELDS.map(({ key, label }) => (
-          <div className="detail-item" key={key}>
-            <span className="detail-label">{label}</span>
-            <span className={`detail-value${loading ? ' loading' : ''}`}>
-              {loading ? '' : (details?.[key] ?? '—')}
-            </span>
+        {FIELDS.map((field) => (
+          <div key={field.key} className="detail-item">
+            <span className="detail-label">{field.label}</span>
+            <span className="detail-value">{details[field.key] || '—'}</span>
           </div>
         ))}
       </div>
