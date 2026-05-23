@@ -1,4 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
+import { auth } from '../firebase';
 import './Zakat.css';
 import './ZakatGoals.css';
 
@@ -9,9 +11,7 @@ const DEFAULT_GOALS = [
     id: generateId(),
     title: 'Umrah',
     icon: '🕋',
-    // 💡 STORED IN CENTS: RM 8000.00 -> 800000
     targetAmount: 800000, 
-    // 💡 STORED IN CENTS: RM 2400.00 -> 240000
     savedAmount: 0,  
     targetDate: '2026-12-31',
   },
@@ -22,17 +22,14 @@ function SaveMoneyModal({ goal, onClose, onSave }) {
   const [amount, setAmount] = useState('');
   const inputRef = useRef(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 80);
   }, []);
 
   const handleSubmit = () => {
     const valRM = parseFloat(amount);
     if (!valRM || valRM <= 0) return;
-    
-    // 💡 CONVERT TO CENTS: Multiply by 100 and round to avoid float leaks
     const valCents = Math.round(valRM * 100); 
-    
     onSave(goal.id, valCents);
     onClose();
   };
@@ -51,7 +48,6 @@ function SaveMoneyModal({ goal, onClose, onSave }) {
 
         <div className="goal-modal-body">
           <div className="goal-modal-progress-info">
-            {/* 💡 DISPLAY: Divide by 100 */}
             <span>Terkumpul: <strong>RM {(goal.savedAmount / 100).toLocaleString('en-MY', { minimumFractionDigits: 2 })}</strong></span>
             <span>Sasaran: <strong>RM {(goal.targetAmount / 100).toLocaleString('en-MY', { minimumFractionDigits: 2 })}</strong></span>
           </div>
@@ -90,7 +86,6 @@ function SaveMoneyModal({ goal, onClose, onSave }) {
 
 /* ── Modal: Edit / Add Goal ── */
 function EditGoalModal({ goal, onClose, onSave }) {
-  // 💡 EDIT MODE: Convert cents back to RM for the input field
   const [form, setForm] = useState(
     goal
       ? { title: goal.title, icon: goal.icon, targetAmount: (goal.targetAmount / 100).toString(), targetDate: goal.targetDate }
@@ -104,12 +99,7 @@ function EditGoalModal({ goal, onClose, onSave }) {
   const handleSave = () => {
     const targetRM = parseFloat(form.targetAmount);
     if (!form.title.trim() || !targetRM || targetRM <= 0) return;
-    
-    onSave({
-      ...form,
-      // 💡 CONVERT TO CENTS
-      targetAmount: Math.round(targetRM * 100), 
-    });
+    onSave({ ...form, targetAmount: Math.round(targetRM * 100) });
     onClose();
   };
 
@@ -126,57 +116,29 @@ function EditGoalModal({ goal, onClose, onSave }) {
         </div>
 
         <div className="goal-modal-body">
-          {/* Icon picker */}
           <label className="goal-modal-field-label">Pilih Ikon</label>
           <div className="goal-icon-picker">
             {ICONS.map(ic => (
-              <button
-                key={ic}
-                className={`goal-icon-btn ${form.icon === ic ? 'selected' : ''}`}
-                onClick={() => set('icon', ic)}
-              >{ic}</button>
+              <button key={ic} className={`goal-icon-btn ${form.icon === ic ? 'selected' : ''}`} onClick={() => set('icon', ic)}>{ic}</button>
             ))}
           </div>
 
           <label className="goal-modal-field-label">Nama Matlamat</label>
-          <input
-            className="goal-edit-text-input"
-            type="text"
-            placeholder="cth: Umrah, Kereta Baru..."
-            value={form.title}
-            onChange={e => set('title', e.target.value)}
-          />
+          <input className="goal-edit-text-input" type="text" placeholder="cth: Umrah, Kereta Baru..." value={form.title} onChange={e => set('title', e.target.value)} />
 
           <label className="goal-modal-field-label">Jumlah Sasaran (RM)</label>
           <div className="goal-modal-input-wrap">
             <span className="goal-modal-prefix">RM</span>
-            <input
-              className="goal-modal-input"
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="0.00"
-              value={form.targetAmount}
-              onChange={e => set('targetAmount', e.target.value)}
-            />
+            <input className="goal-modal-input" type="number" min="0.01" step="0.01" placeholder="0.00" value={form.targetAmount} onChange={e => set('targetAmount', e.target.value)} />
           </div>
 
           <label className="goal-modal-field-label">Tarikh Sasaran</label>
-          <input
-            className="goal-edit-text-input"
-            type="date"
-            value={form.targetDate}
-            onChange={e => set('targetDate', e.target.value)}
-          />
+          <input className="goal-edit-text-input" type="date" value={form.targetDate} onChange={e => set('targetDate', e.target.value)} />
         </div>
 
         <div className="goal-modal-footer">
           <button className="goal-btn-cancel" onClick={onClose}>Batal</button>
-          <button
-            className="goal-btn-save-money"
-            onClick={handleSave}
-            disabled={!form.title.trim() || !form.targetAmount || parseFloat(form.targetAmount) <= 0}
-          >
+          <button className="goal-btn-save-money" onClick={handleSave} disabled={!form.title.trim() || !form.targetAmount || parseFloat(form.targetAmount) <= 0}>
             ✓ Simpan Matlamat
           </button>
         </div>
@@ -187,7 +149,6 @@ function EditGoalModal({ goal, onClose, onSave }) {
 
 /* ── Single Goal Card ── */
 function GoalCard({ goal, index, total, onSaveClick, onEdit, onDelete, onMoveUp, onMoveDown }) {
-  // Math works the exact same way with cents for percentages
   const pct = Math.min(100, (goal.savedAmount / goal.targetAmount) * 100);
   const remainingCents = Math.max(0, goal.targetAmount - goal.savedAmount);
   const isComplete = pct >= 100;
@@ -200,7 +161,6 @@ function GoalCard({ goal, index, total, onSaveClick, onEdit, onDelete, onMoveUp,
 
   return (
     <div className={`goal-card ${isComplete ? 'goal-card--complete' : ''}`}>
-      {/* Card top row */}
       <div className="goal-card-top">
         <div className="goal-card-icon-title">
           <span className="goal-card-icon">{goal.icon}</span>
@@ -218,32 +178,25 @@ function GoalCard({ goal, index, total, onSaveClick, onEdit, onDelete, onMoveUp,
         </div>
       </div>
 
-      {/* Progress bar */}
       <div className="goal-progress-section">
         <div className="goal-progress-bar-track">
-          <div
-            className={`goal-progress-bar-fill ${isComplete ? 'fill--complete' : ''}`}
-            style={{ width: `${pct}%` }}
-          />
+          <div className={`goal-progress-bar-fill ${isComplete ? 'fill--complete' : ''}`} style={{ width: `${pct}%` }} />
         </div>
         <div className="goal-progress-labels">
           <span className={`goal-pct-badge ${isComplete ? 'badge--complete' : ''}`}>
             {isComplete ? '✓ Selesai' : `${pct.toFixed(1)}%`}
           </span>
           <span className="goal-remaining-text">
-            {/* 💡 DISPLAY: Divide remaining cents by 100 */}
             {isComplete ? 'Tahniah! Matlamat tercapai 🎉' : `Baki: RM ${(remainingCents / 100).toLocaleString('en-MY', { minimumFractionDigits: 2 })}`}
           </span>
         </div>
       </div>
 
-      {/* Amounts row */}
       <div className="goal-amounts-row">
         <div className="goal-amount-block">
           <span className="goal-amount-label">Terkumpul</span>
           <span className="goal-amount-value goal-amount-saved">
             <span className="goal-amount-rm">RM</span>
-            {/* 💡 DISPLAY: Divide by 100 */}
             {(goal.savedAmount / 100).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
           </span>
         </div>
@@ -252,13 +205,11 @@ function GoalCard({ goal, index, total, onSaveClick, onEdit, onDelete, onMoveUp,
           <span className="goal-amount-label">Sasaran</span>
           <span className="goal-amount-value">
             <span className="goal-amount-rm">RM</span>
-            {/* 💡 DISPLAY: Divide by 100 */}
             {(goal.targetAmount / 100).toLocaleString('en-MY', { minimumFractionDigits: 2 })}
           </span>
         </div>
       </div>
 
-      {/* Save money button */}
       <button className="goal-save-money-btn" onClick={() => onSaveClick(goal)}>
         <span>💰</span> Simpan Wang
       </button>
@@ -266,17 +217,52 @@ function GoalCard({ goal, index, total, onSaveClick, onEdit, onDelete, onMoveUp,
   );
 }
 
-/* ── Main ZakatGoals Component ── */
-export default function ZakatGoals() {
+//* ── Main ZakatGoals Component ── */
+export default function ZakatGoals({ savedGoals }) {
   const [goals, setGoals] = useState(DEFAULT_GOALS);
-  const [saveModal, setSaveModal] = useState(null);   // goal object
-  const [editModal, setEditModal] = useState(null);   // goal object or 'new'
+  const [saveModal, setSaveModal] = useState(null);   
+  const [editModal, setEditModal] = useState(null);   
 
+  const isInitialMount = useRef(true);
+  
+  // 1. Pull database records on initial load
+  useEffect(() => {
+    if (savedGoals && savedGoals.length > 0) {
+      setGoals(savedGoals);
+    }
+  }, [savedGoals]);
+
+  // 2. 🟢 AUTO-SAVE MAGIC
+  // This automatically runs and saves to the database every time 'goals' changes!
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    const syncToDatabase = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+        const token = await user.getIdToken();
+        
+        await axios.post('http://127.0.0.1:5000/api/zakat/save-data', 
+          { zakat_goals: goals }, 
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log("✅ Matlamat auto-saved ke database!");
+      } catch (error) {
+        console.error("Gagal menyimpan matlamat:", error);
+      }
+    };
+
+    syncToDatabase();
+  }, [goals]); // <- This tells React to watch the 'goals' array
+
+  // 🟢 CLEAN HANDLERS: Notice there is NO syncToDatabase() in here anymore.
+  // The useEffect above does it automatically for us!
   const handleAddSavings = (goalId, amountCents) => {
-    setGoals(prev => prev.map(g =>
-      // 💡 MATH: Safe integer addition
-      g.id === goalId ? { ...g, savedAmount: g.savedAmount + amountCents } : g
-    ));
+    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, savedAmount: g.savedAmount + amountCents } : g));
   };
 
   const handleDelete = (goalId) => {
@@ -288,11 +274,13 @@ export default function ZakatGoals() {
   };
 
   const handleSaveEdit = (updated) => {
-    if (editModal === 'new') {
-      setGoals(prev => [...prev, { ...updated, id: generateId(), savedAmount: 0 }]);
-    } else {
-      setGoals(prev => prev.map(g => g.id === editModal.id ? { ...g, ...updated } : g));
-    }
+    setGoals(prev => {
+      if (editModal === 'new') {
+        return [...prev, { ...updated, id: generateId(), savedAmount: 0 }];
+      } else {
+        return prev.map(g => g.id === editModal.id ? { ...g, ...updated } : g);
+      }
+    });
   };
 
   const handleMoveUp = (index) => {
@@ -331,13 +319,11 @@ export default function ZakatGoals() {
           <div className="goal-summary-sep" />
           <div className="goal-summary-item">
             <span className="goal-summary-label">Jumlah Terkumpul</span>
-            {/* 💡 DISPLAY: Divide by 100 */}
             <span className="goal-summary-value goal-summary-saved">RM {(totalSavedCents / 100).toLocaleString('en-MY', { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="goal-summary-sep" />
           <div className="goal-summary-item">
             <span className="goal-summary-label">Jumlah Sasaran</span>
-            {/* 💡 DISPLAY: Divide by 100 */}
             <span className="goal-summary-value">RM {(totalTargetCents / 100).toLocaleString('en-MY', { minimumFractionDigits: 2 })}</span>
           </div>
         </div>

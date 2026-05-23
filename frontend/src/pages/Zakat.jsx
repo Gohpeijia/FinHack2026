@@ -1,4 +1,7 @@
 import React, {useState, useEffect} from 'react';
+import axios from 'axios';
+import { auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import ZakatRingkasan from './ZakatRingkasan';
 import ZakatAsset from './ZakatAsset';
 import ZakatCalculator from './ZakatCalculator';
@@ -17,30 +20,30 @@ export default function Zakat() {
   const [dbData, setDbData] = useState({});
 
   useEffect(() => {
-    const fetchZakatData = async () => {
-      try {
-        const user = auth.currentUser;
-        if (!user) return;
-        const token = await user.getIdToken();
-        const headers = { Authorization: `Bearer ${token}` };
-        // 1. Fetch live Nisab (Gold API)
-        const nisabRes = await axios.get('http://127.0.0.1:5000/api/zakat/nisab', { headers });
-        if (nisabRes.data.success) {
-          setNisabAmount(nisabRes.data.data.nisab_value);
-        }
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          const headers = { Authorization: `Bearer ${token}` };
 
-        // 2. Fetch saved User Profile data
-        const profileRes = await axios.get('http://127.0.0.1:5000/api/zakat/data', { headers });
-        if (profileRes.data.success && profileRes.data.data) {
-          setDbData(profileRes.data.data);
-        }
+          // 1. Ambil nilai Nisab semasa
+          const nisabRes = await axios.get('http://127.0.0.1:5000/api/zakat/nisab', { headers });
+          if (nisabRes.data.success) {
+            setNisabAmount(nisabRes.data.data.nisab_value);
+          }
 
-      } catch (error) {
-        console.error("Error fetching Zakat data:", error);
+          // 2. Ambil profil zakat pengguna yang tersimpan di database
+          const profileRes = await axios.get('http://127.0.0.1:5000/api/zakat/data', { headers });
+          if (profileRes.data.success && profileRes.data.data) {
+            setDbData(profileRes.data.data);
+          }
+        } catch (error) {
+          console.error("Gagal memuatkan data Zakat dari pangkalan data:", error);
+        }
       }
-    };
+    });
 
-    fetchZakatData();
+    return () => unsubscribe();
   }, []);
 
   return (
@@ -54,7 +57,7 @@ export default function Zakat() {
       <ZakatNisab nisabAmount={nisabAmount} />
 
       {/* Section 2: Jumlah Bersih (Aset - Liabiliti) */}
-      <Zakatbleamount totalAsset={totalAsset} totalLiability={totalLiability} nisabAmount={nisabAmount} />
+      <Zakatbleamount totalAsset={totalAsset} totalLiability={totalLiability} nisabAmount={nisabAmount} savedHaul={dbData.haul_date}/>
 
       {/* Section 5: Ringkasan Zakat */}
       <ZakatRingkasan 
@@ -64,13 +67,15 @@ export default function Zakat() {
       />
 
       {/* Section 3: Jumlah Asset */}
-      <ZakatAsset onTotalChange={setTotalAsset}/>
+      <ZakatAsset onTotalChange={setTotalAsset} savedAssets={dbData.assets}/>
 
       {/* Section 4: Jumlah Liabiliti */}
-      <ZakatLiabiliti onTotalChange={setTotalLiability} />
+      <ZakatLiabiliti onTotalChange={setTotalLiability} 
+      savedLiabilities={dbData.liabilities}
+      />
 
       {/* Section 6: Matlamat Kewangan ← NEW */}
-      <ZakatGoals />
+      <ZakatGoals savedGoals={dbData.zakat_goals}/>
     </div>
   );
 }

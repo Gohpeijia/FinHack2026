@@ -1,4 +1,6 @@
-import React, { useState , useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { auth } from '../firebase';
 import './Zakat.css';
 
 const liabilitiTypes = [
@@ -8,9 +10,7 @@ const liabilitiTypes = [
   { key: 'lain', label: 'Liabiliti Lain-lain', icon: '📋' },
 ];
 
-export default function ZakatLiabiliti({ onTotalChange }) {
-
-  // 1. Declare state FIRST
+export default function ZakatLiabiliti({ onTotalChange, savedLiabilities }) {
   const [liabiliti, setLiabiliti] = useState({
     hutangperibadi: [
       { id: 'hp-1', label: 'Kad Kredit', amount: '' },
@@ -36,22 +36,25 @@ export default function ZakatLiabiliti({ onTotalChange }) {
 
   const [isEditing, setIsEditing] = useState(false);
 
-  // 2. Declare helper functions SECOND
+  // 🟢 Memuatkan semula rekod liabiliti pengguna selepas refresh halaman
+  useEffect(() => {
+    if (savedLiabilities && Object.keys(savedLiabilities).length > 0) {
+      setLiabiliti(savedLiabilities);
+    }
+  }, [savedLiabilities]);
+
   const getCategoryTotal = (key) => {
     return liabiliti[key].reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
   };
 
-  // 3. Perform calculations that depend on state and helpers THIRD
   const grandTotal = liabilitiTypes.reduce((sum, type) => sum + getCategoryTotal(type.key), 0);
 
-  // 4. Run effects FOURTH
   useEffect(() => {
     if (onTotalChange) {
       onTotalChange(grandTotal);
     }
   }, [grandTotal, onTotalChange]);
 
-  // ... (The rest of your handler functions and return statement remain exactly the same)
   const toggleExpand = (key) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -66,11 +69,7 @@ export default function ZakatLiabiliti({ onTotalChange }) {
   };
 
   const handleAddItem = (categoryKey) => {
-    const newItem = {
-      id: `${categoryKey}-${Date.now()}`,
-      label: '',
-      amount: ''
-    };
+    const newItem = { id: `${categoryKey}-${Date.now()}`, label: '', amount: '' };
     setLiabiliti((prev) => ({
       ...prev,
       [categoryKey]: [...prev[categoryKey], newItem]
@@ -84,14 +83,23 @@ export default function ZakatLiabiliti({ onTotalChange }) {
     }));
   };
 
+  // 🟢 Kemas kini panggilan API sebenar untuk liabiliti ke pangkalan data
   const handleActionClick = async () => {
     if (isEditing) {
       try {
-        console.log("Saving liabiliti to database...", liabiliti);
-        // Tempat letak panggilan API/Axios anda nanti
+        const user = auth.currentUser;
+        if (!user) return;
+        const token = await user.getIdToken();
+        
+        await axios.post('http://127.0.0.1:5000/api/zakat/save-data', 
+          { liabilities: liabiliti }, 
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        console.log("✅ Liabiliti berjaya disimpan ke database!");
         setIsEditing(false);
       } catch (error) {
-        console.error("Gagal menyimpan data:", error);
+        console.error("Gagal menyimpan data liabiliti:", error);
       }
     } else {
       setIsEditing(true);
@@ -151,7 +159,10 @@ export default function ZakatLiabiliti({ onTotalChange }) {
                             min="0"
                             placeholder="0.00"
                             value={item.amount}
-                            onChange={(e) => handleItemChange(key, item.id, 'amount', e.target.value)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              handleItemChange(key, item.id, 'amount', val);
+                            }}
                             disabled={!isEditing}
                           />
                         </div>
@@ -170,11 +181,7 @@ export default function ZakatLiabiliti({ onTotalChange }) {
                     ))}
 
                     {isEditing && (
-                      <button
-                        type="button"
-                        className="btn-add-sub"
-                        onClick={() => handleAddItem(key)}
-                      >
+                      <button type="button" className="btn-add-sub" onClick={() => handleAddItem(key)}>
                         ＋ Tambah Item Baru
                       </button>
                     )}
@@ -185,7 +192,6 @@ export default function ZakatLiabiliti({ onTotalChange }) {
           })}
         </div>
 
-        {/* Bar Jumlah Keseluruhan */}
         <div className="asset-total-row liabiliti-total-row">
           <span className="total-label">Jumlah Keseluruhan Liabiliti</span>
           <span className="total-amount liabiliti-total-amount">
@@ -193,7 +199,6 @@ export default function ZakatLiabiliti({ onTotalChange }) {
           </span>
         </div>
 
-        {/* Floating Action Button */}
         <button
           className={`edit-fab ${isEditing ? 'save-mode' : ''}`}
           onClick={handleActionClick}
