@@ -81,3 +81,32 @@ def get_dynamic_halal_stocks():
         
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+    
+@market_bp.route('/search', methods=['GET'])
+@require_auth
+def search_stock_possibilities():
+    try:
+        query = request.args.get('q', '').upper()
+        if not query:
+            return jsonify({"success": True, "data": []})
+
+        api_key = os.getenv('FINNHUB_API_KEY')
+        # Finnhub utility endpoint for searching companies
+        search_url = f"https://finnhub.io/api/v1/search?q={query}&token={api_key}"
+        response = requests.get(search_url)
+        search_results = response.json().get('result', [])
+
+        # Filter and clear out invalid symbols
+        possibilities = []
+        for stock in search_results[:10]: # Top 10 results
+            symbol = stock.get('symbol', '')
+            if '.' in symbol or not symbol:
+                continue
+            possibilities.append({
+                "ticker": symbol,
+                "name": stock.get('description', '')
+            })
+
+        return jsonify({"success": True, "data": possibilities})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500

@@ -202,7 +202,7 @@ def update_profile():
             update_payload["profile_complete"] = True
 
         # Use update() to merge without deleting their portfolio or history
-        db.collection('users').document(user_id).update(update_payload)
+        db.collection('users').document(user_id).set(update_payload, merge=True)
 
         return jsonify({
             "success": True,
@@ -268,6 +268,48 @@ def remove_from_watchlist():
         return jsonify({
             "success": True, 
             "message": f"Removed {sticker_to_remove} from watchlist."
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    
+@portfolio_bp.route('/goal', methods=['POST'])
+@require_auth
+def manage_goal():
+    try:
+        data = request.json
+        secure_user_id = g.uid
+
+        # Extract the Tabung attributes from frontend
+        goal_title = data.get('goaltitle', '').strip()
+        target_date = data.get('date', '').strip()
+        
+        try:
+            total_amount = float(data.get('totalamount', 0.0))
+            total_gathered = float(data.get('totalgatheredamount', 0.0))
+        except ValueError:
+            return jsonify({"success": False, "error": "Amounts must be valid numbers"}), 400
+
+        if not goal_title or total_amount <= 0:
+            return jsonify({"success": False, "error": "Goal title and a target amount greater than zero are required."}), 400
+
+        # Save to the user's Firestore document
+        goal_payload = {
+            "goaltitle": goal_title,
+            "date": target_date,
+            "totalamount": total_amount,
+            "totalgatheredamount": total_gathered
+        }
+
+        # Merge it into the existing user document
+        db.collection('users').document(secure_user_id).set({
+            "tabung_goal": goal_payload
+        }, merge=True)
+
+        return jsonify({
+            "success": True, 
+            "message": f"Successfully updated your goal: {goal_title}!",
+            "data": goal_payload
         })
 
     except Exception as e:

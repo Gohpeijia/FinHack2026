@@ -137,7 +137,7 @@ class SwarmSimulationEngine:
                     }
                 await asyncio.sleep(1)
 
-    async def execute_rehearsal(self, ticker: str, audit_data: dict):
+    async def execute_rehearsal(self, ticker: str, audit_data: dict, user_goal: dict = None):
         print(f"🧠 [MiroFish] Orchestrating Swarm for {ticker}...")
         market_context = (
             f"Ticker: {ticker} | "
@@ -145,6 +145,18 @@ class SwarmSimulationEngine:
             f"Cash Ratio: {audit_data.get('cash_ratio')}% | "
             f"Debt Ratio: {audit_data.get('debt_ratio')}%"
         )
+
+        if user_goal:
+            progress = 0
+            if user_goal.get('totalamount', 0) > 0:
+                progress = round((user_goal.get('totalgatheredamount', 0) / user_goal.get('totalamount')) * 100, 1)
+                
+            market_context += (
+                f" | USER FINANCIAL GOAL: '{user_goal.get('goaltitle')}' "
+                f"(Target: RM{user_goal.get('totalamount')}, "
+                f"Saved: RM{user_goal.get('totalgatheredamount')} [{progress}% Complete], "
+                f"Deadline: {user_goal.get('date')})"
+            )
 
         timeout = aiohttp.ClientTimeout(total=20)
         async with aiohttp.ClientSession(timeout=timeout) as session:

@@ -68,6 +68,7 @@ class AIAgent:
         page_context:       str  = "Unknown",
         preferences:        dict = None,
         previous_consensus: dict = None,
+        user_goal:          dict = None,
     ):
         if previous_consensus is None and ticker:
             previous_consensus = self._consensus_history.get(ticker)
@@ -97,19 +98,19 @@ class AIAgent:
         # even when run_until_complete() raises an exception.
         # The old code called loop.close() only in the happy path — a loop
         # leak on every swarm failure.
-        raw_swarm_results = []
-        loop = asyncio.new_event_loop()
         try:
+            # Safer execution context for synchronous frameworks like standard Flask
+            loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            raw_swarm_results = loop.run_until_complete(
-                # FIX #1 continued: reuse self.swarm_engine instead of
-                # constructing a throwaway SwarmSimulationEngine() here.
-                self.swarm_engine.execute_rehearsal(ticker or "MARKET", quantitative)
-            )
+            try:
+                raw_swarm_results = loop.run_until_complete(
+                    self.swarm_engine.execute_rehearsal(ticker or "MARKET", quantitative, user_goal)
+                )
+            finally:
+                loop.close()
         except Exception as e:
-            print(f"⚠️ Swarm Execution Failed: {e}")
-        finally:
-            loop.close()
+            print(f"⚠️ Swarm Execution Failure: {e}")
+            raw_swarm_results = []
 
         structured_consensus = calculate_swarm_consensus(
             raw_swarm_results,

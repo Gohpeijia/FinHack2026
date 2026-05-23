@@ -111,10 +111,13 @@ def chat_with_agent():
 
         # 1. Save the user message immediately
         _save_message(user_id, session_id, role="user", content=user_message, ticker=ticker)
+        user_doc = db.collection("users").document(user_id).get()
+        user_data = user_doc.to_dict() if user_doc.exists else {}
 
         # 2. Load conversation history + preferences from Firestore
         chat_history = _load_history(user_id, session_id, limit=20)
         preferences  = _get_preferences(user_id)
+        tabung_goal  = user_data.get("tabung_goal", None)
 
         # 3. Run the AI agent
         result = agent.process(
@@ -123,6 +126,7 @@ def chat_with_agent():
             chat_history = chat_history,
             page_context = page_context,
             preferences  = preferences,
+            user_goal    = tabung_goal
         )
 
         if result.get("status") == "ERROR":

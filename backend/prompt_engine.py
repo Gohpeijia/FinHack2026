@@ -60,7 +60,7 @@ When presenting automated audit results, structure output as follows:
 """
 
     @classmethod
-    def get_system_prompt(cls, preferences: dict = None) -> str:
+    def get_system_prompt(cls, preferences: dict = None, tabung_goal: dict = None) -> str:
         prompt = cls.SYSTEM_PROMPT
 
         if preferences:
@@ -71,6 +71,14 @@ When presenting automated audit results, structure output as follows:
             prompt += f"- Investment Experience: {preferences.get('investmentExperience', 'Unknown')}\n"
             prompt += f"- Risk Tolerance: {preferences.get('riskTolerance', 'Unknown')}\n"
             prompt += f"- Zakat Goal: {preferences.get('zakatGoal', 'Unknown')}\n"
+
+        if tabung_goal:
+            prompt += "\n# USER SAVINGS GOAL (TABUNG)\n"
+            prompt += f"The user is saving for: {tabung_goal.get('goaltitle')}\n"
+            prompt += f"- Target Amount: RM {tabung_goal.get('totalamount')}\n"
+            prompt += f"- Currently Saved: RM {tabung_goal.get('totalgatheredamount')}\n"
+            prompt += f"- Target Date: {tabung_goal.get('date')}\n"
+            prompt += "Instruction: Keep this exact goal in mind when synthesizing the final recommendation. Frame the advice around helping them hit this specific target safely.\n"
 
         return prompt
 
