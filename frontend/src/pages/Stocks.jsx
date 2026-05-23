@@ -1,187 +1,194 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import './stocks.css';
 
-// 🟢 Import Firebase tools
-import { db, auth } from '../firebase'; // Adjust this path if your firebase.js is somewhere else
+import { db, auth } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
-import StockSidePanel from './components/StockSidePanel';
-import StockSearchBar from './components/StockSearchBar';
-import StockHeader    from './components/StockHeader';
-import StockChart     from './components/StockChart';
-import StockDetails   from './components/StockDetails';
+import StockSidePanel  from './components/StockSidePanel';
+import StockSearchBar  from './components/StockSearchBar';
+import StockHeader     from './components/StockHeader';
+import StockChart      from './components/StockChart';
+import StockDetails    from './components/StockDetails';
 
-/* ──────────────────────────────────────────────────────────────
-   API INTEGRATION POINTS (Mock Data so UI doesn't crash)
-   ────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   CONFIG
+   ───────────────────────────────────────────────────────────────────────────── */
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
 async function getAuthToken() {
-  if (!auth.currentUser) throw new Error("User not logged in");
-  return await auth.currentUser.getIdToken();
+  if (!auth.currentUser) throw new Error('User not logged in');
+  return auth.currentUser.getIdToken();
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   API HELPERS
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Search — /market/search?q=<query>
+ * Now correctly receives { ticker, name, exchange } from the fixed backend.
+ */
 async function apiSearchStocks(query) {
   try {
-    const token = await getAuthToken();
-    const response = await fetch(`${BACKEND_URL}/search?q=${query}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const token    = await getAuthToken();
+    const response = await fetch(
+      `${BACKEND_URL}/market/search?q=${encodeURIComponent(query)}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
     const result = await response.json();
-    
-    if (result.success) {
-      // Map the backend data to what the frontend SearchBar expects
-      return result.data.map(stock => ({
-        ticker: stock.ticker,
-        name: stock.name,
-        exchange: 'US' // Finnhub default from your backend
-      }));
-    }
+    if (result.success) return result.data; // [{ ticker, name, exchange }]
     return [];
-  } catch (error) {
-    console.error("Search error:", error);
+  } catch (err) {
+    console.error('Search error:', err);
     return [];
   }
 }
 
-async function apiFetchQuote(ticker) {
-  const token = await getAuthToken();
-  const response = await fetch(`${BACKEND_URL}/details/${ticker}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
+/**
+ * Quote + Details — /market/details/<ticker>
+ * ONE call returns everything needed for both StockHeader and StockDetails.
+ * No more duplicate Finnhub round-trips.
+ */
+async function apiFetchStockData(ticker) {
+  const token    = await getAuthToken();
+  const response = await fetch(
+    `${BACKEND_URL}/market/details/${ticker}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
   const result = await response.json();
-
   if (!result.success) throw new Error(result.error);
 
-  // Map the backend data to the header component
-  return { 
-    ticker: result.data.ticker, 
-    name: result.data.ticker, // Finnhub details doesn't return name here, so we fallback to ticker
-    exchange: 'US', 
-    price: result.data.price, 
-    change: null,    // Your backend doesn't provide this yet
-    changePct: null  // Your backend doesn't provide this yet
+  const d = result.data;
+
+  const quote = {
+    ticker:     d.ticker,
+    name:       d.ticker,   // Finnhub /details doesn't return a display name; ticker is fine here
+    exchange:   'US',
+    price:      d.price,
+    change:     d.change,
+    changePct:  d.changePercent,
+    marketStatus: d.marketStatus,
   };
+
+  const details = {
+    // Shariah compliance shown as "Sector" field
+    sector:      d.isHalal ? 'Patuh Syariah ✅' : 'Tidak Patuh Syariah ❌',
+    reason:      d.complianceReason,
+    marketCap:   d.marketCap   ? `$${(d.marketCap / 1000).toFixed(2)}B` : '—',
+    peRatio:     d.peRatio     ? d.peRatio.toFixed(2)                   : '—',
+    dividendYield: '—',        // Finnhub free tier doesn't reliably provide this
+    debtToEquity:  d.debtToEquity ? `${d.debtToEquity.toFixed(2)}%`    : '—',
+    netProfitMargin: d.netProfitMargin ? `${d.netProfitMargin.toFixed(2)}%` : '—',
+  };
+
+  return { quote, details };
 }
 
+/**
+ * Chart — /market/chart/<ticker>?period=<period>
+ * Uses the new dedicated chart endpoint (no more /portfolio/stock/).
+ */
 async function apiFetchChart(ticker, period) {
-  let dataLength = 30;
-  let labelPrefix = 'Day';
-
-  // Generate different mock data based on the chosen period
-  switch (period) {
-    case '1D':  dataLength = 24; labelPrefix = 'Hour'; break;
-    case '1W':  dataLength = 7;  labelPrefix = 'Day'; break;
-    case '1M':  dataLength = 30; labelPrefix = 'Day'; break;
-    case '3M':  dataLength = 12; labelPrefix = 'Week'; break;
-    case '1Y':  dataLength = 12; labelPrefix = 'Month'; break;
-    case 'ALL': dataLength = 5;  labelPrefix = 'Year'; break;
-    default:    dataLength = 30; labelPrefix = 'Day'; break;
-  }
-
-  const data = Array.from({length: dataLength}, (_, i) => ({ 
-    label: `${labelPrefix} ${i + 1}`, 
-    price: 9.00 + Math.random() 
-  }));
-  
-  return { data, high: 10.00, low: 9.00 };
-}
-
-async function apiFetchDetails(ticker) {
-  const token = await getAuthToken();
-  const response = await fetch(`${BACKEND_URL}/details/${ticker}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
+  const token    = await getAuthToken();
+  const response = await fetch(
+    `${BACKEND_URL}/market/chart/${ticker}?period=${period}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
   const result = await response.json();
-
   if (!result.success) throw new Error(result.error);
 
-  // Using the Shariah details from your backend to populate the details card!
-  return { 
-    sector: result.data.isHalal ? 'Patuh Syariah ✅' : 'Tidak Patuh Syariah ❌', 
-    marketCap: result.data.complianceReason, // Showing the reason here for now!
-    peRatio: '—', 
-    dividendYield: '—' 
-  };
+  // Backend returns [{ date, value }]; map to [{ label, price }] for recharts
+  const chartData = result.data.chartData.map(item => ({
+    label: item.date,
+    price: item.value,
+  }));
+
+  return { data: chartData, high: result.data.high, low: result.data.low };
 }
 
-/* ──────────────────────────────────────────────────────────────
-   MAIN STOCKS PAGE
-   ────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   MAIN COMPONENT
+   ───────────────────────────────────────────────────────────────────────────── */
 export default function Stocks() {
-  const [watchlist, setWatchlist] = useState([]);
-  const [activeTicker, setActiveTicker] = useState(null);
-  
-  // 🟢 NEW: Error state
-  const [errorMsg, setErrorMsg] = useState(null);
+  const [watchlist,     setWatchlist]     = useState([]);
+  const [activeTicker,  setActiveTicker]  = useState(null);
+  const [errorMsg,      setErrorMsg]      = useState(null);
 
-  const [quote, setQuote] = useState(null);
-  const [quoteLoading, setQuoteLoading] = useState(false);
+  // Quote
+  const [quote,         setQuote]         = useState(null);
+  const [quoteLoading,  setQuoteLoading]  = useState(false);
 
-  const [chartData, setChartData]   = useState(null);
-  const [chartHigh, setChartHigh]   = useState(null);
-  const [chartLow,  setChartLow]    = useState(null);
-  const [period, setPeriod]         = useState('1Y');
-  const [chartLoading, setChartLoading] = useState(false);
+  // Chart
+  const [chartData,     setChartData]     = useState(null);
+  const [chartHigh,     setChartHigh]     = useState(null);
+  const [chartLow,      setChartLow]      = useState(null);
+  const [period,        setPeriod]        = useState('1Y');
+  const [chartLoading,  setChartLoading]  = useState(false);
 
-  const [details, setDetails]           = useState(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
+  // Details
+  const [details,       setDetails]       = useState(null);
+  const [detailsLoading,setDetailsLoading]= useState(false);
 
-  // 🟢 1. Load Watchlist from Firebase when user logs in
+  /* ── Firebase: load watchlist on login ── */
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const docRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists() && docSnap.data().watchlist) {
-            setWatchlist(docSnap.data().watchlist);
+          const snap = await getDoc(doc(db, 'users', user.uid));
+          if (snap.exists() && snap.data().watchlist) {
+            setWatchlist(snap.data().watchlist);
           }
         } catch (err) {
-          console.error("Gagal memuat turun senarai pantauan:", err);
+          console.error('Failed to load watchlist:', err);
         }
       } else {
-        setWatchlist([]); // Clear if logged out
+        setWatchlist([]);
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // 🟢 2. Save Watchlist to Firebase whenever it changes
+  /* ── Firebase: save watchlist whenever it changes ── */
   useEffect(() => {
-    const saveToFirebase = async () => {
-      if (auth.currentUser) {
-        try {
-          const docRef = doc(db, 'users', auth.currentUser.uid);
-          await setDoc(docRef, { watchlist }, { merge: true });
-        } catch (err) {
-          console.error("Gagal menyimpan ke Firebase:", err);
-        }
-      }
-    };
-    saveToFirebase();
+    if (!auth.currentUser) return;
+    const docRef = doc(db, 'users', auth.currentUser.uid);
+    setDoc(docRef, { watchlist }, { merge: true }).catch(err =>
+      console.error('Failed to save watchlist:', err)
+    );
   }, [watchlist]);
 
-  // ── Load quote + details ──
+  /* ── Load quote + details (single consolidated API call) ── */
   useEffect(() => {
     if (!activeTicker) return;
     let cancelled = false;
-    setErrorMsg(null); // Reset error
 
+    setErrorMsg(null);
     setQuoteLoading(true);
     setDetailsLoading(true);
 
-    apiFetchQuote(activeTicker)
-      .then(data => { if (!cancelled) { setQuote(data); setQuoteLoading(false); } })
-      .catch(() => { if (!cancelled) { setQuoteLoading(false); setErrorMsg("Gagal mendapatkan data harga."); } });
-
-    apiFetchDetails(activeTicker)
-      .then(data => { if (!cancelled) { setDetails(data); setDetailsLoading(false); } })
-      .catch(() => { if (!cancelled) setDetailsLoading(false); });
+    apiFetchStockData(activeTicker)
+      .then(({ quote, details }) => {
+        if (cancelled) return;
+        setQuote(quote);
+        setDetails(details);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        console.error('Stock data error:', err);
+        setErrorMsg(`Gagal mendapatkan data untuk ${activeTicker}. Semak ticker dan cuba lagi.`);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setQuoteLoading(false);
+          setDetailsLoading(false);
+        }
+      });
 
     return () => { cancelled = true; };
   }, [activeTicker]);
 
-  // ── Load chart ──
+  /* ── Load chart (re-runs when ticker OR period changes) ── */
   useEffect(() => {
     if (!activeTicker) return;
     let cancelled = false;
@@ -189,37 +196,48 @@ export default function Stocks() {
     setChartLoading(true);
     apiFetchChart(activeTicker, period)
       .then(({ data, high, low }) => {
-        if (!cancelled) {
-          setChartData(data); setChartHigh(high); setChartLow(low); setChartLoading(false);
-        }
+        if (cancelled) return;
+        setChartData(data);
+        setChartHigh(high);
+        setChartLow(low);
       })
-      .catch(() => { if (!cancelled) setChartLoading(false); });
+      .catch(err => {
+        if (cancelled) return;
+        console.error('Chart error:', err);
+        setChartData(null);
+      })
+      .finally(() => { if (!cancelled) setChartLoading(false); });
 
     return () => { cancelled = true; };
   }, [activeTicker, period]);
 
-
-  // ── Select stock (from search or watchlist) ──
+  /* ── Select stock ── */
   const handleSelectStock = useCallback((item) => {
-    // item: { ticker, name, exchange }
     setActiveTicker(item.ticker);
     setQuote(null);
     setChartData(null);
     setDetails(null);
     setPeriod('1Y');
+    setErrorMsg(null);
   }, []);
 
-  // ── Watchlist actions ──
+  /* ── Watchlist actions ── */
   const isSaved = watchlist.some(s => s.ticker === activeTicker);
 
   const handleToggleSave = useCallback(() => {
-    if (!quote && !activeTicker) return;
-    const stock = quote ?? { ticker: activeTicker, name: activeTicker, exchange: '', price: null, change: null, changePct: null };
+    if (!activeTicker) return;
+    const stock = quote ?? {
+      ticker: activeTicker, name: activeTicker,
+      exchange: '', price: null, change: null, changePct: null,
+    };
     setWatchlist(prev => {
       if (prev.some(s => s.ticker === stock.ticker)) {
         return prev.filter(s => s.ticker !== stock.ticker);
       }
-      return [...prev, { ticker: stock.ticker, name: stock.name, exchange: stock.exchange, price: stock.price, change: stock.change, changePct: stock.changePct }];
+      return [...prev, {
+        ticker: stock.ticker, name: stock.name, exchange: stock.exchange,
+        price: stock.price, change: stock.change, changePct: stock.changePct,
+      }];
     });
   }, [quote, activeTicker]);
 
@@ -231,17 +249,17 @@ export default function Stocks() {
     setWatchlist(newList);
   }, []);
 
-  // ── Derive display data ──
-  const displayName     = quote?.name     ?? activeTicker ?? '';
-  const displayExchange = quote?.exchange ?? '';
-  const displayPrice    = quote?.price    ?? null;
-  const displayChange   = quote?.change   ?? null;
-  const displayChangePct= quote?.changePct?? null;
-  const isPositive      = (displayChange ?? 0) >= 0;
+  /* ── Derived display values ── */
+  const displayName    = quote?.name      ?? activeTicker ?? '';
+  const displayExchange= quote?.exchange  ?? '';
+  const displayPrice   = quote?.price     ?? null;
+  const displayChange  = quote?.change    ?? null;
+  const displayChangePct = quote?.changePct ?? null;
+  const isPositive     = (displayChange ?? 0) >= 0;
 
+  /* ── Render ── */
   return (
     <div className="stocks-page">
-      {/* ── Watchlist Side Panel ── */}
       <StockSidePanel
         watchlist={watchlist}
         activeTicker={activeTicker}
@@ -253,16 +271,29 @@ export default function Stocks() {
         onDelete={handleDeleteFromWatchlist}
       />
 
-      {/* ── Main Content ── */}
       <main className="stocks-main">
-        {/* Search Bar */}
         <StockSearchBar
           onSelect={handleSelectStock}
           fetchSearchResults={apiSearchStocks}
         />
 
+        {/* Error banner */}
+        {errorMsg && (
+          <div style={{
+            background: 'var(--red-soft, #fee2e2)',
+            color: 'var(--red, #dc2626)',
+            border: '1px solid var(--red, #dc2626)',
+            borderRadius: 8,
+            padding: '0.75rem 1rem',
+            marginTop: '0.75rem',
+            fontSize: '0.875rem',
+          }}>
+            ⚠️ {errorMsg}
+          </div>
+        )}
+
         {/* Empty state */}
-        {!activeTicker && (
+        {!activeTicker && !errorMsg && (
           <div className="stocks-empty-state">
             <div className="stocks-empty-icon">📈</div>
             <h3 className="stocks-empty-title">Cari saham untuk mula</h3>
