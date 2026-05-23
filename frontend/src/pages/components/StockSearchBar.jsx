@@ -4,18 +4,18 @@ import React, { useState, useRef, useCallback, useEffect, memo } from 'react';
  * StockSearchBar — search input + live dropdown.
  *
  * Props:
- *  onSelect : ({ ticker, name, exchange }) => void
- *  fetchSearchResults : async (query) => [{ ticker, name, exchange }]
- *    — caller supplies this so the component is backend-agnostic.
- *    — should return [] on error.
+ * onSelect : ({ ticker, name, exchange }) => void
+ * fetchSearchResults : async (query) => [{ ticker, name, exchange }]
  */
 const StockSearchBar = memo(function StockSearchBar({ onSelect, fetchSearchResults }) {
-  const [query,    setQuery]    = useState('');
-  const [results,  setResults]  = useState([]);
-  const [loading,  setLoading]  = useState(false);
-  const [open,     setOpen]     = useState(false);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1); // NEW: Tracks keyboard selection
+
   const debounceTimer = useRef(null);
-  const wrapRef       = useRef(null);
+  const wrapRef = useRef(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -25,12 +25,18 @@ const StockSearchBar = memo(function StockSearchBar({ onSelect, fetchSearchResul
       }
     }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    
+    // NEW: Cleanup event listener AND the debounce timer on unmount
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      clearTimeout(debounceTimer.current);
+    };
   }, []);
 
   const handleChange = useCallback((e) => {
     const val = e.target.value;
     setQuery(val);
+    setActiveIndex(-1); // Reset keyboard focus when typing
 
     clearTimeout(debounceTimer.current);
 
@@ -59,6 +65,7 @@ const StockSearchBar = memo(function StockSearchBar({ onSelect, fetchSearchResul
     setQuery('');
     setOpen(false);
     setResults([]);
+    setActiveIndex(-1);
     onSelect(item);
   }, [onSelect]);
 
@@ -66,8 +73,27 @@ const StockSearchBar = memo(function StockSearchBar({ onSelect, fetchSearchResul
     setQuery('');
     setOpen(false);
     setResults([]);
+    setActiveIndex(-1);
     clearTimeout(debounceTimer.current);
   }, []);
+
+  // NEW: Handle Keyboard Navigation (Up, Down, Enter, Escape)
+  const handleKeyDown = (e) => {
+    if (!open) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev > 0 ? prev - 1 : 0));
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();
+      handleSelect(results[activeIndex]);
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  };
 
   return (
     <div className="stock-search-wrap" ref={wrapRef}>
@@ -79,6 +105,7 @@ const StockSearchBar = memo(function StockSearchBar({ onSelect, fetchSearchResul
           placeholder="Cari saham melalui ticker atau nama…"
           value={query}
           onChange={handleChange}
+          onKeyDown={handleKeyDown} // Attached keyboard listener here
           onFocus={() => query.trim() && setOpen(true)}
           autoComplete="off"
           spellCheck={false}
@@ -95,11 +122,13 @@ const StockSearchBar = memo(function StockSearchBar({ onSelect, fetchSearchResul
           ) : results.length === 0 ? (
             <div className="search-dropdown-item loading">No results found</div>
           ) : (
-            results.map(item => (
+            results.map((item, index) => (
               <div
                 key={item.ticker}
-                className="search-dropdown-item"
+                // NEW: Dynamically add an "active" class if hovered via keyboard
+                className={`search-dropdown-item ${index === activeIndex ? 'active' : ''}`}
                 onMouseDown={() => handleSelect(item)}
+                onMouseEnter={() => setActiveIndex(index)} // Sync mouse hover with keyboard focus
               >
                 <span className="dropdown-ticker">{item.ticker}</span>
                 <span className="dropdown-name">{item.name}</span>

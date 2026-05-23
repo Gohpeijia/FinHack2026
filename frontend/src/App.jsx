@@ -5,6 +5,7 @@ import Advisor from './pages/Advisor';
 import Auth from './pages/Auth';
 import Zakat from './pages/Zakat';
 import Stocks from './pages/Stocks';
+import Preferences from './pages/Preferences';
 
 
 import { FaCalculator, FaThLarge, FaRobot, FaSignOutAlt, FaChartLine } from 'react-icons/fa';
@@ -81,6 +82,7 @@ function AppShell() {
         <Routes>
           <Route path="/stocks"  element={<Stocks />} />
           <Route path="/zakat"   element={<Zakat />} />
+          <Route path="/preferences" element={<Preferences />} /> 
           <Route path="/advisor" element={<Advisor />} />
           <Route path="/"        element={<Auth />} />
         </Routes>

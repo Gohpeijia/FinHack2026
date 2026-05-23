@@ -1,12 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-
-/**
- * AIAdvisorContext
- * ─────────────────────────────────────────────────────────────
- * Shared state for the AI Advisor chat across all pages.
- * Fully fixed to support secure server-driven session tracking
- * and ChatGPT-style highlighted text contextual awareness.
- */
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+// IMPORT YOUR FIREBASE AUTH HERE (adjust the path if needed)
+import { auth } from '../firebase'; 
 
 const AIAdvisorContext = createContext(null);
 
@@ -22,15 +16,49 @@ export function AIAdvisorProvider({ children }) {
   const [loading, setLoading]   = useState(false);
   const [highlightedContext, setHighlightedContext] = useState(null);
 
-  // Securely capture conversation identifier (simulate session/database token keys)
-  const [conversationId] = useState('session_shariah_guidance_active');
+  // Grouping messages into a daily session (matches backend fallback)
+  const [conversationId] = useState(() => {
+    return new Date().toISOString().split('T')[0]; // e.g., "2026-05-23"
+  });
 
-  /**
-   * sendMessage({ text, fileData, fileName })
-   * ─────────────────────────────────────────
-   * Injects prompt parameters, captures the quote block snapshot,
-   * then calls the backend securely without state closure dependency chains.
-   */
+  // ── Load Chat History on Login ──
+  useEffect(() => {
+    const fetchHistory = async (user) => {
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch(`http://localhost:5000/api/ai/history?session_id=${conversationId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        const data = await response.json();
+        if (data.success && data.history && data.history.length > 0) {
+          // Format backend history to match frontend expectations
+          const formattedHistory = data.history.map(msg => ({
+            role: msg.role, // 'user' or 'ai/assistant'
+            content: msg.content
+          }));
+          setMessages([...INITIAL_MESSAGES, ...formattedHistory]);
+        }
+      } catch (error) {
+        console.error("Failed to load chat history:", error);
+      }
+    };
+
+    // Listen for auth state changes so history loads right after login
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        fetchHistory(user);
+      } else {
+        setMessages(INITIAL_MESSAGES); // Clear if logged out
+      }
+    });
+
+    return () => unsubscribe();
+  }, [conversationId]);
+
   const sendMessage = useCallback(async ({ text, fileData, fileName }) => {
     if (!text && !fileData && !highlightedContext) return;
 
@@ -38,17 +66,14 @@ export function AIAdvisorProvider({ children }) {
       role: 'user',
       content: text,
       fileName: fileName || null,
-      highlightedText: highlightedContext || null, // Preserved context payload
+      highlightedText: highlightedContext || null, 
     };
 
-    // Snapshot context content and clear current input UI bar context
     const textContextSnapshot = highlightedContext;
     setHighlightedContext(null);
 
-    // 1. Safe UI updates
     setMessages(prev => [...prev, userMsg]);
 
-    // 2. Safely delegate network payload outside the state hook cycle
     _callBackend(
       conversationId,
       { text, fileData, fileName, highlightedText: textContextSnapshot },
@@ -61,6 +86,7 @@ export function AIAdvisorProvider({ children }) {
   const clearMessages = useCallback(() => {
     setMessages(INITIAL_MESSAGES);
     setHighlightedContext(null);
+    // Optional: Add logic here to call the DELETE /history backend route if you want to wipe the DB too
   }, []);
 
   return (
@@ -77,41 +103,54 @@ export function AIAdvisorProvider({ children }) {
   );
 }
 
-/** Internal helper — Decoupled server communication handler */
+/** Internal helper — Server communication handler */
 async function _callBackend(conversationId, { text, fileData, fileName, highlightedText }, setMessages, setLoading) {
   setLoading(true);
   try {
-    // ── ARCHITECTURAL SECURITY COMPLIANCE SOLUTION ──────────────────────────────
-    // FIXED: Instead of letting the frontend manipulate and submit history logs,
-    // we send a secure unique conversationId token. The backend reads authoritative logs from a DB.
-    const response = await fetch('/api/shariah-advisor', {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Sila log masuk terlebih dahulu. (Please log in)");
+
+    const token = await user.getIdToken();
+
+    const payload = {
+      session_id: conversationId,
+      message: text,
+      pageContext: highlightedText || "Unknown Page", 
+      fileData: fileData,  
+      fileName: fileName
+    };
+
+    // Make sure the URL matches your Flask server port (usually 5000)
+    const response = await fetch('http://localhost:5000/api/ai/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        conversationId, 
-        text, 
-        fileData, 
-        fileName, 
-        highlightedText // Context token processed directly at the backend
-      }),
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` // Sends auth to @require_auth
+      },
+      body: JSON.stringify(payload),
     });
 
-    if (!response.ok) throw new Error('Server error');
-
     const data = await response.json();
-    setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
-  } catch {
+
+    if (!response.ok) {
+        throw new Error(data.error || 'Server error');
+    }
+
+    if (data.success && data.data && data.data.final_advice) {
+      setMessages(prev => [...prev, { role: 'assistant', content: data.data.final_advice }]);
+    } else {
+      throw new Error("Invalid response format from server.");
+    }
+    
+  } catch (error) {
+    console.error("AI Advisor Error:", error);
     setMessages(prev => [
       ...prev,
-      { role: 'assistant', content: 'An error occurred. Please check your connection and try again.' },
+      { role: 'assistant', content: 'Ralat berlaku. Sila semak sambungan anda dan cuba lagi.' },
     ]);
   } finally {
     setLoading(false);
   }
 }
 
-export function useAIAdvisor() {
-  const ctx = useContext(AIAdvisorContext);
-  if (!ctx) throw new Error('useAIAdvisor must be used inside AIAdvisorProvider');
-  return ctx;
-}
+export const useAIAdvisor = () => useContext(AIAdvisorContext);
