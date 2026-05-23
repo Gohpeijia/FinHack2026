@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, g
 from security import require_auth
-from zakat_service import get_current_nisab
 from firebase_config import db
+from zakat_service import get_current_nisab, get_current_gold_price
 from datetime import datetime
 
 zakat_bp = Blueprint('zakat', __name__)
@@ -13,10 +13,13 @@ zakat_bp = Blueprint('zakat', __name__)
 @require_auth
 def fetch_nisab():
     try:
-        current_nisab = get_current_nisab()
+        gold_price = get_current_gold_price()
+        current_nisab = gold_price * 85
+        
         return jsonify({
             "success": True,
             "data": {
+                "gold_price": round(gold_price, 2),     # RM per gram
                 "nisab_value": round(current_nisab, 2)
             }
         })

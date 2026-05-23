@@ -15,6 +15,7 @@ import '../shared.css';
 export default function Zakat() {
 
   const [nisabAmount, setNisabAmount] = useState(0);
+  const [goldPrice, setGoldPrice] = useState(0);
   const [totalAsset, setTotalAsset] = useState(0);
   const [totalLiability, setTotalLiability] = useState(0);
   const [dbData, setDbData] = useState({});
@@ -30,6 +31,7 @@ export default function Zakat() {
           const nisabRes = await axios.get('http://127.0.0.1:5000/api/zakat/nisab', { headers });
           if (nisabRes.data.success) {
             setNisabAmount(nisabRes.data.data.nisab_value);
+            setGoldPrice(nisabRes.data.data.gold_price);
           }
 
           // 2. Ambil profil zakat pengguna yang tersimpan di database
@@ -54,7 +56,7 @@ export default function Zakat() {
       </div>
 
       {/*Section 1: Nisab */}
-      <ZakatNisab nisabAmount={nisabAmount} />
+      <ZakatNisab nisabAmount={nisabAmount} goldPrice={goldPrice}/>
 
       {/* Section 2: Jumlah Bersih (Aset - Liabiliti) */}
       <Zakatbleamount totalAsset={totalAsset} totalLiability={totalLiability} nisabAmount={nisabAmount} savedHaul={dbData.haul_date}/>
