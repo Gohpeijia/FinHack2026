@@ -8,21 +8,8 @@ from datetime import datetime
 ai_bp = Blueprint('ai', __name__)
 agent = AIAgent()
 
-
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  INTERNAL HELPERS — Firestore subcollection storage
-#
-#  WHY subcollection instead of array-in-user-doc?
-#  Your old code appended every message into users/{uid}.chat_history[].
-#  Firestore documents have a hard 1MB limit — a long chat history will
-#  silently start failing writes once it's hit. Subcollections have no limit.
-#
-#  New structure:
-#    users/{user_id}/chat_sessions/{session_id}/messages/{auto_id}
-#      role      : "user" | "ai"
-#      content   : str
-#      ticker    : str | None
-#      timestamp : ISO string
+#  INTERNAL HELPERS
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def _messages_ref(user_id: str, session_id: str):
@@ -35,7 +22,6 @@ def _messages_ref(user_id: str, session_id: str):
           .collection("messages")
     )
 
-
 def _save_message(user_id: str, session_id: str, role: str, content: str, ticker: str = None):
     """Appends one message and bumps the session's last_updated timestamp."""
     now = datetime.now().isoformat()
@@ -47,7 +33,6 @@ def _save_message(user_id: str, session_id: str, role: str, content: str, ticker
         "timestamp": now,
     })
 
-    # Keep a last_updated field on the session doc so we can sort sessions later
     (
         db.collection("users")
           .document(user_id)
@@ -56,13 +41,8 @@ def _save_message(user_id: str, session_id: str, role: str, content: str, ticker
           .set({"last_updated": now}, merge=True)
     )
 
-
 def _load_history(user_id: str, session_id: str, limit: int = 20) -> list:
-    """
-    Returns the last `limit` messages, oldest-first.
-    Shape matches what ai_agent.py expects:
-        [{"role": "user"|"ai", "content": "..."}]
-    """
+    """Returns the last `limit` messages, oldest-first."""
     docs = (
         _messages_ref(user_id, session_id)
         .order_by("timestamp")
@@ -74,14 +54,12 @@ def _load_history(user_id: str, session_id: str, limit: int = 20) -> list:
         for d in docs
     ]
 
-
 def _get_preferences(user_id: str) -> dict:
     """Loads user preferences from the existing users document."""
     doc = db.collection("users").document(user_id).get()
     if doc.exists:
         return doc.to_dict().get("preference", {})
     return {}
-
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  POST /chat  —  send a message, get AI response
@@ -95,26 +73,20 @@ def chat_with_agent():
         user_message = data.get('message') or data.get('text')
         ticker       = data.get('ticker')
         page_context = data.get('pageContext', 'Unknown Page')
-
-        # session_id groups messages into one conversation.
-        # Frontend should send today's date for a daily session,
-        # or a UUID per browser tab for isolated sessions.
-        # Falls back to today's date if not provided.
         session_id   = data.get('session_id') or datetime.now().strftime("%Y-%m-%d")
-
-        user_id = g.uid
+        user_id      = g.uid
 
         if not user_message:
             return jsonify({"success": False, "error": "Message is required."}), 400
 
         print(f"🤖 [API] User={user_id} | Session={session_id} | Page={page_context} | Message={user_message}")
 
-        # 1. Save the user message immediately
+        # 1. Save user message
         _save_message(user_id, session_id, role="user", content=user_message, ticker=ticker)
         user_doc = db.collection("users").document(user_id).get()
         user_data = user_doc.to_dict() if user_doc.exists else {}
 
-        # 2. Load conversation history + preferences from Firestore
+        # 2. Load conversation history + preferences
         chat_history = _load_history(user_id, session_id, limit=20)
         preferences  = _get_preferences(user_id)
         tabung_goal  = user_data.get("tabung_goal", None)
@@ -132,19 +104,18 @@ def chat_with_agent():
         if result.get("status") == "ERROR":
             return jsonify({"success": False, "error": result["final_advice"]}), 503
 
-        # 4. Save the AI response
-        _save_message(user_id, session_id, role="ai", content=result["final_advice"], ticker=ticker)
+        # 4. Save the AI response (Using "assistant" to match React UI expectations)
+        _save_message(user_id, session_id, role="assistant", content=result["final_advice"], ticker=ticker)
 
         return jsonify({
             "success":    True,
-            "session_id": session_id,   # return so frontend can reuse it
+            "session_id": session_id,
             "data":       result,
         })
 
     except Exception as e:
         print(f"❌ [API Error] {str(e)}")
         return jsonify({"success": False, "error": "Internal server error."}), 500
-
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  GET /history  —  called on page load to repopulate the chat window
@@ -170,7 +141,6 @@ def get_history():
         print(f"❌ [History Error] {str(e)}")
         return jsonify({"success": False, "error": "Could not load history."}), 500
 
-
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  DELETE /history  —  clear chat button
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -182,14 +152,12 @@ def clear_history():
         user_id    = g.uid
         session_id = (request.json or {}).get('session_id') or datetime.now().strftime("%Y-%m-%d")
 
-        # Firestore does not auto-delete subcollections — batch delete messages first
         docs  = _messages_ref(user_id, session_id).get()
         batch = db.batch()
         for doc in docs:
             batch.delete(doc.reference)
         batch.commit()
 
-        # Delete the session document itself
         (
             db.collection("users")
               .document(user_id)
