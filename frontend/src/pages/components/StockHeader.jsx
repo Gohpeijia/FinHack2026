@@ -1,5 +1,4 @@
 import React, { memo } from 'react';
-
 /**
  * StockHeader — shows company name, ticker badge, live price + change.
  *

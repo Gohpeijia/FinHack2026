@@ -15,16 +15,52 @@ import StockDetails   from './components/StockDetails';
 /* ──────────────────────────────────────────────────────────────
    API INTEGRATION POINTS (Mock Data so UI doesn't crash)
    ────────────────────────────────────────────────────────────── */
+async function getAuthToken() {
+  if (!auth.currentUser) throw new Error("User not logged in");
+  return await auth.currentUser.getIdToken();
+}
+
 async function apiSearchStocks(query) {
-  // Mock search result
-  return [
-    { ticker: 'MAYBANK', name: 'Malayan Banking Bhd', exchange: 'KLSE' },
-    { ticker: 'TENAGA', name: 'Tenaga Nasional Bhd', exchange: 'KLSE' }
-  ].filter(s => s.ticker.includes(query.toUpperCase()) || s.name.toLowerCase().includes(query.toLowerCase()));
+  try {
+    const token = await getAuthToken();
+    const response = await fetch(`${BACKEND_URL}/search?q=${query}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const result = await response.json();
+    
+    if (result.success) {
+      // Map the backend data to what the frontend SearchBar expects
+      return result.data.map(stock => ({
+        ticker: stock.ticker,
+        name: stock.name,
+        exchange: 'US' // Finnhub default from your backend
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error("Search error:", error);
+    return [];
+  }
 }
 
 async function apiFetchQuote(ticker) {
-  return { ticker, name: ticker, exchange: 'KLSE', price: 9.85, change: 0.12, changePct: 1.23 };
+  const token = await getAuthToken();
+  const response = await fetch(`${BACKEND_URL}/details/${ticker}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const result = await response.json();
+
+  if (!result.success) throw new Error(result.error);
+
+  // Map the backend data to the header component
+  return { 
+    ticker: result.data.ticker, 
+    name: result.data.ticker, // Finnhub details doesn't return name here, so we fallback to ticker
+    exchange: 'US', 
+    price: result.data.price, 
+    change: null,    // Your backend doesn't provide this yet
+    changePct: null  // Your backend doesn't provide this yet
+  };
 }
 
 async function apiFetchChart(ticker, period) {
@@ -51,7 +87,21 @@ async function apiFetchChart(ticker, period) {
 }
 
 async function apiFetchDetails(ticker) {
-  return { sector: 'Kewangan', marketCap: 'RM 118B', peRatio: 12.5, dividendYield: '5.8%' };
+  const token = await getAuthToken();
+  const response = await fetch(`${BACKEND_URL}/details/${ticker}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const result = await response.json();
+
+  if (!result.success) throw new Error(result.error);
+
+  // Using the Shariah details from your backend to populate the details card!
+  return { 
+    sector: result.data.isHalal ? 'Patuh Syariah ✅' : 'Tidak Patuh Syariah ❌', 
+    marketCap: result.data.complianceReason, // Showing the reason here for now!
+    peRatio: '—', 
+    dividendYield: '—' 
+  };
 }
 
 /* ──────────────────────────────────────────────────────────────
