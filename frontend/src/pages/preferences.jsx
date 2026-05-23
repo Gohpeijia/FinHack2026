@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import axios from 'axios';
+import auth from '../firebase';
 import './Preferences.css';
 import '../shared.css';
 
@@ -32,7 +32,7 @@ const STEPS = [
     options: ['Tiada Pengalaman', 'Pemula (< 1 tahun)', 'Pertengahan (1–5 tahun)', 'Berpengalaman (> 5 tahun)'],
   },
   {
-    key: 'riskAppetite',
+    key: 'riskTolerance',
     question: 'Apakah tahap toleransi risiko anda?',
     type: 'chips',
     options: ['Rendah (Selamat)', 'Sederhana', 'Tinggi (Agresif)'],
@@ -96,25 +96,44 @@ export default function Preferences() {
     // Last step — save to Firestore
     setSaving(true);
     try {
-      const uid = auth.currentUser?.uid;
-      if (!uid) throw new Error('Pengguna tidak dijumpai. Sila log masuk semula.');
+      const user = auth.currentUser;
+      if (!user) throw new Error('Pengguna tidak dijumpai. Sila log masuk semula.');
 
-      await updateDoc(doc(db, 'users', uid), {
-        preferences: {
-          ...answers,
-          // coerce monthlyIncome to number
+      // 1. Get the secure token for the backend @require_auth decorator
+      const token = await user.getIdToken();
+
+      // 2. Format the payload exactly how portfolio_routes.py expects it
+      const payload = {
+        preference: {
+          employmentStatus: answers.employmentStatus || '',
           monthlyIncome: Number(answers.monthlyIncome) || 0,
-        },
-        preferencesCompleted:  true,
-        preferencesCompletedAt: serverTimestamp(),
-      });
+          investmentExperience: answers.investmentExperience || '',
+          riskTolerance: answers.riskTolerance || '',
+          zakatGoal: answers.zakatGoal || ''
+        }
+      };
+
+      // 3. Send the data to your Flask server
+      const response = await axios.post(
+        'http://127.0.0.1:5000/api/stocks/portfolio/update', 
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}` // Passes the firewall security
+          }
+        }
+      );
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Ralat menyimpan data.');
+      }
 
       setDone(true);
-
-      // Short delay so user sees the completion screen, then redirect
       setTimeout(() => navigate('/zakat'), 2000);
+
     } catch (err) {
-      setError(err.message || 'Ralat menyimpan data. Sila cuba lagi.');
+      // Catch backend errors or network errors safely
+      setError(err.response?.data?.error || err.message || 'Ralat menyimpan data. Sila cuba lagi.');
     } finally {
       setSaving(false);
     }
