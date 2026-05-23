@@ -65,17 +65,21 @@ function AppShell() {
   const { setHighlightedContext } = useAIAdvisor();
   
   const isStocks = location.pathname === '/stocks';
+  // 1. Check if the user is on the Auth or Preferences page
+  const isAuthOrPref = location.pathname === '/' || location.pathname === '/preferences';
   const showPanel = location.pathname === '/zakat' || location.pathname === '/stocks';
 
   /* Dynamically calculate layout boundaries */
   const mainStyle = {
-    marginLeft: isStocks ? '60px' : '200px', // Shrinks margin when navbar collapses
-    marginRight: showPanel ? '320px' : '0px', // Makes room for the AI panel
+    // 2. Remove the left margin completely if on Auth or Pref pages
+    marginLeft: isAuthOrPref ? '0px' : (isStocks ? '60px' : '200px'), 
+    marginRight: showPanel ? '320px' : '0px', 
   };
 
   return (
     <>
-      <NavBar />
+      {/* 3. Only render the NavBar if NOT on the Auth or Pref pages */}
+      {!isAuthOrPref && <NavBar />}
 
       {/* Page content wrapper dynamically handles layout constraints */}
       <div className="app-container" style={mainStyle}>
