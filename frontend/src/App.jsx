@@ -41,7 +41,7 @@ function NavBar() {
     <nav className={isStocks ? 'nav-icon-only' : ''}>
       <Link className="nav-zakat" to="/zakat" title="Zakat">
         <FaCalculator />
-        {!isStocks && <span>Zakat</span>}
+        {!isStocks && <span>Rancangan kewangan</span>}
       </Link>
       <Link className="nav-stocks" to="/stocks" title="Stocks">
         <FaChartLine />
