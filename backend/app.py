@@ -5,6 +5,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter               
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 load_dotenv()
 # Import your route blueprints
 from portfolio_routes import portfolio_bp
@@ -18,8 +19,10 @@ logging.basicConfig(
     format="%(levelname)s: %(message)s"
 )
 
+
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}) 
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 limiter = Limiter(
     get_remote_address,
@@ -48,4 +51,5 @@ def health_check():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(port=port, debug=True)
+    # 🟢 NEW: host='0.0.0.0' explicitly set here just in case you run it directly
+    app.run(host='0.0.0.0', port=port, debug=False)

@@ -282,14 +282,21 @@ def buy_stock():
 @require_auth
 def manage_watchlist():
     try:
-        data           = request.json
+        data = request.json
         secure_user_id = g.uid
-        sticker        = data.get('sticker', '').upper()
+        sticker = data.get('sticker', '').upper()
 
         try:
             price = float(data.get('price', 0.0))
+            change = float(data.get('change', 0.0))
+            changePercent = float(data.get('changePercent', 0.0))
+            # Extract new fields from frontend payload
+            changeFromOpen = float(data.get('changeFromOpen', 0.0))
+            changePercentFromOpen = float(data.get('changePercentFromOpen', 0.0))
         except ValueError:
-            return jsonify({"success": False, "error": "Price must be a valid number"}), 400
+            return jsonify({"success": False, "error": "Numbers must be valid"}), 400
+            
+        marketStatus = data.get('marketStatus', 'Unknown')
 
         if not sticker:
             return jsonify({"success": False, "error": "Sticker is required."}), 400
@@ -300,23 +307,38 @@ def manage_watchlist():
         if not user_doc.exists:
             return jsonify({"success": False, "error": "User not found"}), 404
 
-        watchlist   = user_doc.to_dict().get('watchlist', [])
+        watchlist = user_doc.to_dict().get('watchlist', [])
         stock_found = False
 
         for item in watchlist:
             if item.get('sticker') == sticker:
                 item['price'] = price
-                stock_found   = True
+                item['change'] = change
+                item['changePercent'] = changePercent
+                # Update existing saved data
+                item['changeFromOpen'] = changeFromOpen
+                item['changePercentFromOpen'] = changePercentFromOpen
+                item['marketStatus'] = marketStatus
+                stock_found = True
                 break
 
         if not stock_found:
-            watchlist.append({"sticker": sticker, "price": price})
+            watchlist.append({
+                "sticker": sticker,
+                "price": price,
+                "change": change,
+                "changePercent": changePercent,
+                # Save new data
+                "changeFromOpen": changeFromOpen,
+                "changePercentFromOpen": changePercentFromOpen,
+                "marketStatus": marketStatus
+            })
 
         user_ref.update({"watchlist": watchlist})
         return jsonify({
             "success": True,
-            "message": f"Successfully updated {sticker} in watchlist!",
-            "data":    watchlist
+            "message": f"Successfully updated {sticker} in your watchlist!",
+            "data": watchlist
         })
 
     except Exception as e:

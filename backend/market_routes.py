@@ -32,8 +32,15 @@ def get_stock_details(ticker):
             "data": {
                 "ticker":          ticker,
                 "price":           quote["price"],
-                "change":          quote["change"],
-                "changePercent":   quote["changePercent"],
+                
+                # --- The New Dual-Percentage Data ---
+                "change":                quote["change"],
+                "changePercent":         quote["changePercent"],
+                "changeFromOpen":        quote["changeFromOpen"],
+                "changePercentFromOpen": quote["changePercentFromOpen"],
+                "marketStatus":          quote["marketStatus"],
+                # ------------------------------------
+                
                 "high":            quote["high"],
                 "low":             quote["low"],
                 "open":            quote["open"],

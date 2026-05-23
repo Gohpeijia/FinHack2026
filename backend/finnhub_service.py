@@ -3,6 +3,7 @@ import os
 import time
 import requests
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 API_KEY = os.getenv('FINNHUB_API_KEY')
 
@@ -14,19 +15,42 @@ def get_live_price(ticker: str):
 
 
 def get_rich_market_quote(ticker: str) -> dict:
-    """Real-time price, change, change %, high, low, open, previous close."""
     url = f"https://finnhub.io/api/v1/quote?symbol={ticker.upper()}&token={API_KEY}"
     try:
         data = requests.get(url, timeout=5).json()
         if data.get('c'):
+            current_price = data.get('c')
+            open_price = data.get('o')
+            
+            # --- 1. Calculate "Price Difference" from Today's Open ---
+            change_from_open = 0.0
+            change_pct_from_open = 0.0
+            if open_price and open_price > 0:
+                change_from_open = round(current_price - open_price, 3) # The absolute difference
+                change_pct_from_open = round((change_from_open / open_price) * 100, 2) # The %
+
+            # --- 2. Determine Market Status ---
+            ny_time = datetime.now(ZoneInfo('America/New_York'))
+            is_weekday = ny_time.weekday() < 5
+            is_open_hours = (ny_time.hour > 9 or (ny_time.hour == 9 and ny_time.minute >= 30)) and ny_time.hour < 16
+            market_status = "Market Open" if (is_weekday and is_open_hours) else f"Market Closed (As of {ny_time.strftime('%b %d')})"
+
             return {
-                "price":         data.get('c'),
-                "change":        round(data.get('d',  0.0), 2),
-                "changePercent": round(data.get('dp', 0.0), 2),
-                "high":          data.get('h'),
-                "low":           data.get('l'),
-                "open":          data.get('o'),
-                "previousClose": data.get('pc'),
+                "price": current_price,
+                
+                # SET 1: Compared to Previous Close (Native Finnhub Data)
+                "change": round(data.get('d', 0.0), 3),                # Price Difference (e.g. -0.040)
+                "changePercent": round(data.get('dp', 0.0), 2),        # Percentage (e.g. -0.36)
+                
+                # SET 2: Compared to Today's Open (Our Custom Math)
+                "changeFromOpen": change_from_open,                    # Price Difference (e.g. -0.015)
+                "changePercentFromOpen": change_pct_from_open,         # Percentage (e.g. -0.12)
+                
+                "marketStatus": market_status,
+                "high": data.get('h'),
+                "low": data.get('l'),
+                "open": open_price,
+                "previousClose": data.get('pc')
             }
         return None
     except Exception as e:
