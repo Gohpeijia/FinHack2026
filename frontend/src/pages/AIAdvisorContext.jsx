@@ -26,7 +26,7 @@ export function AIAdvisorProvider({ children }) {
     const fetchHistory = async (user) => {
       try {
         const token = await user.getIdToken();
-        const response = await fetch(`http://localhost:5000/api/ai/history?session_id=${conversationId}`, {
+        const response = await fetch(`http://localhost:5000/api/aiagent/ai/history?session_id=${conversationId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -121,7 +121,7 @@ async function _callBackend(conversationId, { text, fileData, fileName, highligh
     };
 
     // Make sure the URL matches your Flask server port (usually 5000)
-    const response = await fetch('http://localhost:5000/api/ai/chat', {
+    const response = await fetch('http://localhost:5000/api/aiagent/ai/chat', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',

@@ -2,6 +2,7 @@ import os
 import asyncio
 import time
 import requests
+from dotenv import load_dotenv
 from prompt_engine import ShariahAdvisorPromptManager
 from shariah_filter import shariahfilter
 from mirofish_loop import SwarmSimulationEngine
@@ -9,7 +10,7 @@ from consensus_engine import calculate_swarm_consensus
 from finnhub_service import get_rich_market_quote, get_company_fundamentals
 
 FINNHUB_KEY = os.getenv("FINNHUB_API_KEY")
-
+load_dotenv()
 
 def get_sentiment_data(ticker: str) -> dict:
     """
@@ -170,7 +171,8 @@ class AIAgent:
 
         if chat_history:
             for msg in chat_history[-6:]:
-                role = "assistant" if msg["role"] == "ai" else "user"
+                # Safely catches both legacy "ai" tags and the new "assistant" tags
+                role = "assistant" if msg["role"] in ["ai", "assistant"] else "user" 
                 messages.append({"role": role, "content": msg["content"]})
 
         messages.append({"role": "user", "content": prompt_content})
