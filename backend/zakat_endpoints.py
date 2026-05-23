@@ -6,148 +6,73 @@ from datetime import datetime
 
 zakat_bp = Blueprint('zakat', __name__)
 
-# --- 1. ZAKAT FITRAH ---
-@zakat_bp.route('/fitrah/calculate', methods=['POST'])
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 1. SERVE LIVE NISAB (For frontend calculations)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@zakat_bp.route('/nisab', methods=['GET'])
 @require_auth
-def calculate_fitrah():
+def fetch_nisab():
     try:
-        data = request.json
-        user_id = g.uid
-
-        # Pull rate from user profile, fallback to request body, fallback to 7.0
-        user_doc = db.collection('users').document(user_id).get()
-        stored_rate = user_doc.to_dict().get('fitrah_rate', 7.00) if user_doc.exists else 7.00
-        state_rate = stored_rate or float(data.get('rate', 7.00))
-
-        family_members = int(data.get('family_members', 1))
-        total_fitrah = state_rate * family_members
-
-        return jsonify({
-            "success": True,
-            "data": {
-                "total_fitrah": total_fitrah,
-                "rate_used": state_rate,
-                "deadline": "Before Eid al-Fitr prayers",
-                "status": "UNPAID"
-            }
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-# --- 2. ZAKAT HARTA & NISAB ---
-@zakat_bp.route('/harta/calculate', methods=['POST'])
-@require_auth
-def calculate_harta():
-    try:
-        data = request.json
-
-        # 1. Accept the calculations directly from the frontend to avoid duplication
-        try:
-            eligible_wealth = float(data.get('eligible_wealth', 0))
-            above_nisab = data.get('above_nisab', False)
-            zakat_due = float(data.get('zakat_due', 0.0))
-            months_above_nisab = int(data.get('months_above_nisab', 0))
-        except ValueError:
-            return jsonify({"success": False, "error": "Invalid data format. Numbers required."}), 400
-
-        if eligible_wealth < 0 or months_above_nisab < 0 or zakat_due < 0:
-            return jsonify({"success": False, "error": "Values cannot be negative."}), 400
-
-        # 2. Backend still fetches the live Nisab for the health score / explanation features
         current_nisab = get_current_nisab()
-        haul_completed = months_above_nisab >= 12
-        zakat_obligatory = above_nisab and haul_completed
-
-        # 3. Status Logic based on frontend inputs
-        if not above_nisab:
-            status = "BELOW_NISAB"
-        elif above_nisab and not haul_completed:
-            status = "ABOVE_NISAB_NO_HAUL"
-        else:
-            status = "ELIGIBLE_FOR_ZAKAT"
-
-        # 4. Explanation fields (Backend value-add)
-        nisab_progress = min(100, int((eligible_wealth / current_nisab) * 100)) if current_nisab > 0 else 0
-        wealth_gap = round(max(0, current_nisab - eligible_wealth), 2)
-        months_remaining = max(0, 12 - months_above_nisab) if above_nisab else 12
-
-        # 5. Financial Health Score
-        haul_progress = min(100, int((months_above_nisab / 12) * 100))
-
-        if not above_nisab:
-            readiness_score = int(nisab_progress * 0.8)
-        else:
-            readiness_score = min(100, int((nisab_progress + haul_progress) / 2))
-
-        health_status = "Good Progress" if readiness_score > 50 else "Building Foundation"
-        if zakat_obligatory:
-            health_status = "Zakat Obligatory - Action Required"
-
         return jsonify({
             "success": True,
             "data": {
-                "above_nisab": above_nisab,         # Forwarding frontend calculation
-                "haul_completed": haul_completed,
-                "zakat_obligatory": zakat_obligatory,
-                "nisab": current_nisab,
-                "wealth": eligible_wealth,          # Forwarding frontend calculation
-                "progress_percentage": nisab_progress,
-                "zakat_due": zakat_due,             # Forwarding frontend calculation
-                "status": status,
-                "explanation": {
-                    "months_remaining": months_remaining,
-                    "required_wealth_for_nisab": current_nisab,
-                    "current_wealth_gap": wealth_gap
-                },
-                "financial_health": {
-                    "zakat_readiness_score": readiness_score,
-                    "status": health_status
-                }
+                "nisab_value": round(current_nisab, 2)
             }
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# --- 3. SAVE ZAKAT RECORD ---
-@zakat_bp.route('/save', methods=['POST'])
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 2. GET ZAKAT DATA (To populate frontend on page load)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@zakat_bp.route('/data', methods=['GET'])
 @require_auth
-def save_zakat_record():
+def get_zakat_data():
+    try:
+        user_id = g.uid
+        user_doc = db.collection('users').document(user_id).get()
+        
+        if not user_doc.exists:
+            return jsonify({"success": True, "data": {}})
+            
+        user_data = user_doc.to_dict()
+        zakat_profile = user_data.get('zakat_profile', {})
+        
+        return jsonify({
+            "success": True,
+            "data": zakat_profile
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 3. SAVE ZAKAT DATA (Zero Math, strictly saving frontend state)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@zakat_bp.route('/save-data', methods=['POST'])
+@require_auth
+def save_zakat_data():
     try:
         data = request.json
         user_id = g.uid
-
-        if not user_id:
-            return jsonify({"success": False, "error": "Missing userId"}), 400
-
-        # UPDATED SCHEMA: Using the exact four attributes requested
-        new_record = {
-            "timestamp": datetime.now().isoformat(), # Automatically generated by the backend
-            "jumlahasset": float(data.get("jumlahasset", 0.0)),
-            "jumliabiliti": float(data.get("jumliabiliti", 0.0)),
-            "hauldate": data.get("hauldate", ""),
-            # Note: You can optionally keep 'zakat_due' here if you still want to record the final payable amount!
-            "zakat_due": float(data.get("zakat_due", 0.0)) 
-        }
-
-        user_ref = db.collection('users').document(user_id)
-        user_doc = user_ref.get()
-
-        if not user_doc.exists:
-            return jsonify({"success": False, "error": "User not found in database"}), 404
-
-        user_data = user_doc.to_dict()
-        zakat_history = user_data.get('zakat_history', [])
-        zakat_history.append(new_record)
-
-        user_ref.update({
-            "zakat_history": zakat_history
-        })
-
-        return jsonify({
-            "success": True,
-            "message": "Zakat record permanently saved to the cloud ledger!",
-            "data": new_record
-        })
-
+        
+        # Define allowed keys exactly as you requested
+        allowed_keys = [
+            'nisab_amount', 'assets', 'liabilities', 
+            'net_amount', 'zakat_due', 'haul_date', 'zakat_goals'
+        ]
+        
+        # Filter the incoming data
+        payload = {k: v for k, v in data.items() if k in allowed_keys}
+        
+        # Use SET with MERGE to prevent crashes for new users
+        db.collection('users').document(user_id).set({
+            "zakat_profile": payload,
+            "zakat_last_updated": datetime.now().isoformat()
+        }, merge=True)
+        
+        return jsonify({"success": True, "message": "Zakat data securely saved."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

@@ -71,6 +71,7 @@ class shariahfilter:
             print(f"❌ Error screening {ticker}: {e}")
             return {"isHalal": False, "reason": "API Connection Error"}
 
+screener = shariahfilter()
+
 def check_shariah_compliance(ticker: str) -> dict:
-    screener = shariahfilter()
     return screener.check_compliance(ticker)

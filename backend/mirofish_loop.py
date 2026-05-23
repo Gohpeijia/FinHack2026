@@ -10,6 +10,7 @@ class SwarmSimulationEngine:
         self.api_url = "https://api.groq.com/openai/v1/chat/completions"
 
         self.personas = [
+            # ── ORIGINAL 5 ──────────────────────────────────────────────────
             {
                 "id":          "ETHICAL_COMPLIANCE_OFFICER",
                 "prompt":      "You are a strict Shariah compliance officer. Your ONLY concern is whether the debt ratio exceeds the 33% haram threshold. If it does, you must VETO. Analyze the data and output ONLY valid JSON.",
@@ -40,6 +41,51 @@ class SwarmSimulationEngine:
                 "temperature": 0.9,
                 "weight":      0.4,
             },
+
+            # ── NEW 3 ────────────────────────────────────────────────────────
+            {
+                "id":          "TREND_AGENT",
+                "prompt": (
+                    "You are a technical analysis expert specializing in price momentum and chart patterns. "
+                    "Analyze the provided price data: current price, daily change percentage, 52-week high/low range, "
+                    "and recent price trajectory from the chart history. "
+                    "Determine if the stock is in an uptrend, downtrend, or consolidation. "
+                    "A stock trading near its 52-week high with positive change is a bullish signal. "
+                    "A stock with negative change% and far from its high is bearish. "
+                    "Output ONLY valid JSON."
+                ),
+                "temperature": 0.3,
+                "weight":      0.75,
+            },
+            {
+                "id":          "SENTIMENT_AGENT",
+                "prompt": (
+                    "You are a market sentiment analyst. You evaluate crowd psychology, news flow, "
+                    "and social media buzz around a stock. "
+                    "You are given a sentiment score (buzz score, news score, social media score) where "
+                    "values above 0.6 are bullish and below 0.4 are bearish. "
+                    "If no sentiment data is available, be cautious and default to HOLD. "
+                    "Do not let hype override fundamentals — flag if sentiment diverges sharply from price action. "
+                    "Output ONLY valid JSON."
+                ),
+                "temperature": 0.6,
+                "weight":      0.6,
+            },
+            {
+                "id":          "FUNDAMENTALS_AGENT",
+                "prompt": (
+                    "You are a fundamental equity analyst focused on long-term financial health. "
+                    "Evaluate the company using: P/E ratio (fair value is 10-25; above 40 is overvalued), "
+                    "net profit margin (above 10% is healthy), "
+                    "market cap (large cap > $10B is safer), "
+                    "and debt-to-equity ratio (below 33% is Shariah-safe and financially conservative). "
+                    "A company with strong margins, reasonable P/E, and low debt is a BUY. "
+                    "An overvalued or loss-making company is a SELL or HOLD. "
+                    "Output ONLY valid JSON."
+                ),
+                "temperature": 0.2,
+                "weight":      0.85,
+            },
         ]
 
         self.json_format_instructions = """
@@ -65,11 +111,6 @@ class SwarmSimulationEngine:
         return text.strip()
 
     def _validate_decision(self, data: dict, persona_id: str, weight: float) -> dict:
-        """
-        Strict schema validation — prevents LLM hallucinations from reaching
-        the consensus engine. Enforces VALID_DECISIONS, numeric confidence bounds,
-        and caps reasoning length.
-        """
         VALID_DECISIONS = {"BUY", "HOLD", "SELL", "VETO"}
 
         decision = str(data.get("decision", "")).strip().upper()
@@ -85,11 +126,11 @@ class SwarmSimulationEngine:
             confidence = 50
 
         return {
-            "agent":     persona_id,
-            "decision":  decision,
+            "agent":      persona_id,
+            "decision":   decision,
             "confidence": confidence,
-            "reasoning": str(data.get("reasoning", ""))[:300],
-            "weight":    weight,
+            "reasoning":  str(data.get("reasoning", ""))[:300],
+            "weight":     weight,
         }
 
     async def _fetch_agent_opinion(self, session, persona, market_data, retries=3):
@@ -116,13 +157,8 @@ class SwarmSimulationEngine:
                     result  = await response.json()
                     ai_text = result["choices"][0]["message"]["content"]
 
-                    cleaned_text  = self._clean_json_response(ai_text)
-                    raw_data      = json.loads(cleaned_text)
-
-                    # FIX #1: _validate_decision() was defined but NEVER called.
-                    # Raw JSON was injected directly into the pipeline, meaning
-                    # hallucinated decisions like "STRONG BUY" or out-of-range
-                    # confidence values reached consensus_engine unchecked.
+                    cleaned_text = self._clean_json_response(ai_text)
+                    raw_data     = json.loads(cleaned_text)
                     return self._validate_decision(raw_data, persona["id"], persona["weight"])
 
             except Exception as e:
@@ -137,30 +173,77 @@ class SwarmSimulationEngine:
                     }
                 await asyncio.sleep(1)
 
-    async def execute_rehearsal(self, ticker: str, audit_data: dict, user_goal: dict = None):
+    async def execute_rehearsal(
+        self,
+        ticker:       str,
+        audit_data:   dict,
+        user_goal:    dict = None,
+        quote_data:   dict = None,   # ← NEW: from get_rich_market_quote()
+        fundamentals: dict = None,   # ← NEW: from get_company_fundamentals()
+        sentiment:    dict = None,   # ← NEW: from get_sentiment_data()
+    ):
         print(f"🧠 [MiroFish] Orchestrating Swarm for {ticker}...")
+
+        # ── Base context (all agents see this) ──────────────────────────────
         market_context = (
             f"Ticker: {ticker} | "
             f"Shariah Compliant: {audit_data.get('is_compliant')} | "
-            f"Cash Ratio: {audit_data.get('cash_ratio')}% | "
             f"Debt Ratio: {audit_data.get('debt_ratio')}%"
         )
 
+        # ── Price / Trend data (TREND_AGENT focuses here) ───────────────────
+        if quote_data:
+            market_context += (
+                f" | Price: ${quote_data.get('price')} "
+                f"| Change: {quote_data.get('changePercent')}% today "
+                f"| High: ${quote_data.get('high')} "
+                f"| Low: ${quote_data.get('low')} "
+                f"| Prev Close: ${quote_data.get('previousClose')}"
+            )
+        else:
+            market_context += " | Price data: unavailable"
+
+        # ── Fundamentals (FUNDAMENTALS_AGENT focuses here) ──────────────────
+        if fundamentals:
+            market_context += (
+                f" | P/E Ratio: {fundamentals.get('peRatio')} "
+                f"| Market Cap: ${fundamentals.get('marketCap')}M "
+                f"| Net Profit Margin: {fundamentals.get('netProfitMargin')}% "
+                f"| Debt/Equity: {fundamentals.get('debtToEquity')}%"
+            )
+        else:
+            market_context += " | Fundamentals: unavailable"
+
+        # ── Sentiment (SENTIMENT_AGENT focuses here) ─────────────────────────
+        if sentiment:
+            market_context += (
+                f" | Buzz Score: {sentiment.get('buzz')} "
+                f"| News Score: {sentiment.get('news_score')} "
+                f"| Social Sentiment: {sentiment.get('social_score')}"
+            )
+        else:
+            market_context += " | Sentiment data: unavailable"
+
+        # ── User goal context ────────────────────────────────────────────────
         if user_goal:
             progress = 0
             if user_goal.get('totalamount', 0) > 0:
-                progress = round((user_goal.get('totalgatheredamount', 0) / user_goal.get('totalamount')) * 100, 1)
-                
+                progress = round(
+                    (user_goal.get('totalgatheredamount', 0) / user_goal.get('totalamount')) * 100, 1
+                )
             market_context += (
-                f" | USER FINANCIAL GOAL: '{user_goal.get('goaltitle')}' "
+                f" | USER GOAL: '{user_goal.get('goaltitle')}' "
                 f"(Target: RM{user_goal.get('totalamount')}, "
-                f"Saved: RM{user_goal.get('totalgatheredamount')} [{progress}% Complete], "
+                f"Saved: RM{user_goal.get('totalgatheredamount')} [{progress}% done], "
                 f"Deadline: {user_goal.get('date')})"
             )
 
-        timeout = aiohttp.ClientTimeout(total=20)
+        timeout = aiohttp.ClientTimeout(total=25)  # bumped: 8 agents now
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            tasks   = [asyncio.create_task(self._fetch_agent_opinion(session, persona, market_context)) for persona in self.personas]
+            tasks   = [
+                asyncio.create_task(self._fetch_agent_opinion(session, persona, market_context))
+                for persona in self.personas
+            ]
             results = await asyncio.gather(*tasks)
 
         return results

@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 # Import your route blueprints
 from portfolio_routes import portfolio_bp
-from market_routes import market_bp  
+from market_routes import market_bp
 from zakat_endpoints import zakat_bp
 from ai_routes import ai_bp
 
@@ -19,7 +19,7 @@ logging.basicConfig(
 )
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}) 
 
 limiter = Limiter(
     get_remote_address,

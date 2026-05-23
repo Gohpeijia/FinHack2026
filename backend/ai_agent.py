@@ -6,8 +6,38 @@ from prompt_engine import ShariahAdvisorPromptManager
 from shariah_filter import shariahfilter
 from mirofish_loop import SwarmSimulationEngine
 from consensus_engine import calculate_swarm_consensus
+from finnhub_service import get_rich_market_quote, get_company_fundamentals
+
+FINNHUB_KEY = os.getenv("FINNHUB_API_KEY")
 
 
+def get_sentiment_data(ticker: str) -> dict:
+    """
+    Fetches Finnhub social sentiment scores.
+    Returns buzz, news_score, social_score or None if unavailable.
+    Finnhub free tier supports this endpoint.
+    """
+    try:
+        url = f"https://finnhub.io/api/v1/stock/social-sentiment?symbol={ticker}&token={FINNHUB_KEY}"
+        data = requests.get(url, timeout=5).json()
+
+        reddit  = data.get("reddit",  [{}])
+        twitter = data.get("twitter", [{}])
+
+        # Take the most recent entry from each source
+        reddit_score  = reddit[-1].get("score",  0.5) if reddit  else 0.5
+        twitter_score = twitter[-1].get("score", 0.5) if twitter else 0.5
+        avg_score     = round((reddit_score + twitter_score) / 2, 3)
+
+        return {
+            "buzz":         round(reddit[-1].get("mention", 0) + twitter[-1].get("mention", 0), 1) if reddit and twitter else 0,
+            "news_score":   avg_score,
+            "social_score": avg_score,
+        }
+    except Exception as e:
+        print(f"⚠️ Sentiment fetch failed [{ticker}]: {e}")
+        return None
+    
 class AIAgent:
     def __init__(self):
         groq_key       = os.getenv("GROQ_API_KEY")
