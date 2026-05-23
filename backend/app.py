@@ -27,7 +27,9 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["100 per day", "10 per minute"],
+    # Increase these limits significantly! 
+    # 120 per minute allows ~2 requests per second.
+    default_limits=["1000 per day", "120 per minute"], 
     storage_uri="memory://"
 )
 

@@ -34,32 +34,29 @@ const StockSearchBar = memo(function StockSearchBar({ onSelect, fetchSearchResul
   }, []);
 
   const handleChange = useCallback((e) => {
-    const val = e.target.value;
-    setQuery(val);
-    setActiveIndex(-1); // Reset keyboard focus when typing
+  const val = e.target.value;
+  setQuery(val);
+  setActiveIndex(-1); 
 
+  // 1. Clear the previous timer if the user is still typing
+  if (debounceTimer.current) {
     clearTimeout(debounceTimer.current);
+  }
 
-    if (!val.trim()) {
+  // 2. Set a new timer to wait 500ms before fetching
+  debounceTimer.current = setTimeout(async () => {
+    if (val.trim()) {
+      setLoading(true);
+      const data = await fetchSearchResults(val);
+      setResults(data);
+      setLoading(false);
+      setOpen(true);
+    } else {
       setResults([]);
       setOpen(false);
-      return;
     }
-
-    setLoading(true);
-    setOpen(true);
-
-    debounceTimer.current = setTimeout(async () => {
-      try {
-        const data = await fetchSearchResults(val.trim());
-        setResults(data);
-      } catch {
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 350);
-  }, [fetchSearchResults]);
+  }, 500); // 500 milliseconds is the sweet spot
+}, [fetchSearchResults]);
 
   const handleSelect = useCallback((item) => {
     setQuery('');

@@ -14,7 +14,7 @@ import StockDetails    from './components/StockDetails';
 /* ─────────────────────────────────────────────────────────────────────────────
    CONFIG
    ───────────────────────────────────────────────────────────────────────────── */
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 async function getAuthToken() {
   if (!auth.currentUser) throw new Error('User not logged in');
@@ -31,13 +31,20 @@ async function getAuthToken() {
  */
 async function apiSearchStocks(query) {
   try {
-    const token    = await getAuthToken();
+    // If not logged in, search without auth so you can still see results
+    const headers = {};
+    if (auth.currentUser) {
+      const token = await auth.currentUser.getIdToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(
-      `${BACKEND_URL}/market/search?q=${encodeURIComponent(query)}`,
-      { headers: { Authorization: `Bearer ${token}` } }
+       `${BACKEND_URL}/api/stocks/market/search?q=${encodeURIComponent(query)}`,
+        { headers }
     );
     const result = await response.json();
-    if (result.success) return result.data; // [{ ticker, name, exchange }]
+    if (result.success) return result.data;
+    console.error('Search failed:', result.error);
     return [];
   } catch (err) {
     console.error('Search error:', err);
@@ -92,9 +99,9 @@ async function apiFetchStockData(ticker) {
 async function apiFetchChart(ticker, period) {
   const token    = await getAuthToken();
   const response = await fetch(
-    `${BACKEND_URL}/market/chart/${ticker}?period=${period}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
+  `${BACKEND_URL}/api/stocks/market/chart/${ticker}?period=${period}`,
+  { headers: { Authorization: `Bearer ${token}` } }
+);
   const result = await response.json();
   if (!result.success) throw new Error(result.error);
 
