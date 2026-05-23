@@ -9,8 +9,9 @@ from mirofish_loop import SwarmSimulationEngine
 from consensus_engine import calculate_swarm_consensus
 from finnhub_service import get_rich_market_quote, get_company_fundamentals
 
-FINNHUB_KEY = os.getenv("FINNHUB_API_KEY")
 load_dotenv()
+FINNHUB_KEY = os.getenv("FINNHUB_API_KEY")
+
 
 def get_sentiment_data(ticker: str) -> dict:
     """

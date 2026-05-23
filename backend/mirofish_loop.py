@@ -2,12 +2,32 @@ import os
 import json
 import asyncio
 import aiohttp
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class SwarmSimulationEngine:
     def __init__(self):
-        self.api_key = os.getenv("GROQ_API_KEY")
-        self.api_url = "https://api.groq.com/openai/v1/chat/completions"
+        self.groq_key = os.getenv("GROQ_API_KEY")
+        self.openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        self.gemini_key = os.getenv("GEMINI_API_KEY")
+        
+        # Decide which API to use for the Swarm
+        if self.groq_key:
+            self.api_key = self.groq_key
+            self.api_url = "https://api.groq.com/openai/v1/chat/completions"
+            self.model = "llama-3.3-70b-versatile"
+        elif self.openrouter_key:
+            self.api_key = self.openrouter_key
+            self.api_url = "https://openrouter.ai/api/v1/chat/completions"
+            self.model = "xai/grok-2-1212"
+        elif self.gemini_key:
+            self.api_key = self.gemini_key
+            self.api_url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+            self.model = "gemini-2.5-flash"
+        else:
+            print("🚨 CRITICAL: No API keys found for Swarm Engine!")
 
         self.personas = [
             # ── ORIGINAL 5 ──────────────────────────────────────────────────
@@ -145,7 +165,7 @@ class SwarmSimulationEngine:
         ]
 
         payload = {
-            "model":       "llama-3.3-70b-versatile",
+            "model":       self.model,
             "messages":    messages,
             "temperature": persona["temperature"],
         }

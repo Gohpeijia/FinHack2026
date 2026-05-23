@@ -1,3 +1,5 @@
+import axios from 'axios';
+import { auth } from '../firebase';
 import React, { useState, useEffect } from 'react';
 import './Zakat.css';
 
@@ -8,7 +10,7 @@ const assetTypes = [
   { key: 'perniagaan', label: 'Aset Perniagaan', icon: '💼' },
 ];
 
-export default function ZakatAsset({ onTotalChange }) {
+export default function ZakatAsset({ onTotalChange, savedAssets }) {
 
   // 1. Declare state FIRST
   const [assets, setAssets] = useState({
@@ -35,6 +37,12 @@ export default function ZakatAsset({ onTotalChange }) {
   });
 
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (savedAssets && Object.keys(savedAssets).length > 0) {
+      setAssets(savedAssets);
+    }
+  }, [savedAssets]);
 
   // 2. Declare helper functions SECOND
   const getCategoryTotal = (key) => {
@@ -88,18 +96,26 @@ export default function ZakatAsset({ onTotalChange }) {
   };
 
   const handleActionClick = async () => {
-    if (isEditing) {
-      try {
-        console.log("Saving data to database...", assets);
-        // Tempat letak panggilan API/Axios anda nanti
-        setIsEditing(false);
-      } catch (error) {
-        console.error("Gagal menyimpan data:", error);
+      if (isEditing) {
+        try {
+          const user = auth.currentUser;
+          const token = await user.getIdToken();
+          
+          // Push the payload to Flask
+          await axios.post('http://127.0.0.1:5000/api/zakat/save-data', 
+            { assets: assets }, 
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          
+          console.log("✅ Assets saved securely to database!");
+          setIsEditing(false);
+        } catch (error) {
+          console.error("Gagal menyimpan data:", error);
+        }
+      } else {
+        setIsEditing(true);
       }
-    } else {
-      setIsEditing(true);
-    }
-  };
+    };
 
   return (
     <section className="zakat-section">

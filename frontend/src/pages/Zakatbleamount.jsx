@@ -1,9 +1,39 @@
 import React, { useState } from 'react';
+import axios from 'axios';
+import { auth } from '../firebase';
 import './Zakat.css';
 
-export default function Zakatbleamount({ totalAsset = 0, totalLiability = 0, nisabAmount = 0 }) {
+export default function Zakatbleamount({ totalAsset = 0, totalLiability = 0, nisabAmount = 0, savedHaul }) {
   const [isEditing, setIsEditing] = useState(false);
   const [haulDate, setHaulDate] = useState('2026-01-01'); // Default fallback date
+
+  useEffect(() => {
+    if (savedHaul) setHaulDate(savedHaul);
+  }, [savedHaul]);
+
+  const saveDateToDB = async (dateStr) => {
+    try {
+        const user = auth.currentUser;
+        if (!user) return;
+        const token = await user.getIdToken();
+        
+        await axios.post('http://127.0.0.1:5000/api/zakat/save-data', 
+          { haul_date: dateStr }, 
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+    } catch (err) {
+        console.error("Error saving Haul Date", err);
+    }
+  };
+
+  const handleDateChange = (e) => {
+    const selectedDate = e.target.value;
+    if (!selectedDate) return; 
+    
+    setHaulDate(selectedDate);
+    saveDateToDB(selectedDate); // 🟢 Auto-save!
+    setIsEditing(false);
+  };
 
   const netAmount = totalAsset - totalLiability;
   const displayAmount = netAmount > 0 ? netAmount : 0.00;
@@ -15,17 +45,6 @@ export default function Zakatbleamount({ totalAsset = 0, totalLiability = 0, nis
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  };
-
-  // Triggers automatically as soon as a user selects a date
-  const handleDateChange = (e) => {
-    const selectedDate = e.target.value;
-    // Prevent empty state if they somehow clear it
-    if (!selectedDate) return; 
-    
-    setHaulDate(selectedDate);
-    console.log("Auto-saving Haul Date to database:", selectedDate);
-    setIsEditing(false);
   };
 
   const formatDateDisplay = (dateString) => {

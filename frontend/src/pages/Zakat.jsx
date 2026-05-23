@@ -5,7 +5,7 @@ import ZakatCalculator from './ZakatCalculator';
 import ZakatNisab from './ZakatNisab';
 import ZakatLiabiliti from './ZakatLiabiliti';
 import Zakatbleamount from './Zakatbleamount';
-import ZakatGoals from './ZakatGoals';   // ← NEW
+import ZakatGoals from './ZakatGoals';   
 import './Zakat.css';
 import '../shared.css';
 
@@ -14,24 +14,33 @@ export default function Zakat() {
   const [nisabAmount, setNisabAmount] = useState(0);
   const [totalAsset, setTotalAsset] = useState(0);
   const [totalLiability, setTotalLiability] = useState(0);
+  const [dbData, setDbData] = useState({});
 
   useEffect(() => {
-    const fetchNisabAmount = async () => {
+    const fetchZakatData = async () => {
       try {
-        // TODO: Replace this with your actual Axios/Fetch call later
-        // const response = await fetch('https://your-api.com/nisab');
-        // const data = await response.json();
-        // setNisabAmount(data.currentNisab);
-        
-        // Simulating the API response for now so your UI doesn't break
-        const simulatedApiResponse = 24320.50; 
-        setNisabAmount(simulatedApiResponse);
+        const user = auth.currentUser;
+        if (!user) return;
+        const token = await user.getIdToken();
+        const headers = { Authorization: `Bearer ${token}` };
+        // 1. Fetch live Nisab (Gold API)
+        const nisabRes = await axios.get('http://127.0.0.1:5000/api/zakat/nisab', { headers });
+        if (nisabRes.data.success) {
+          setNisabAmount(nisabRes.data.data.nisab_value);
+        }
+
+        // 2. Fetch saved User Profile data
+        const profileRes = await axios.get('http://127.0.0.1:5000/api/zakat/data', { headers });
+        if (profileRes.data.success && profileRes.data.data) {
+          setDbData(profileRes.data.data);
+        }
+
       } catch (error) {
-        console.error("Error fetching Nisab amount:", error);
+        console.error("Error fetching Zakat data:", error);
       }
     };
 
-    fetchNisabAmount();
+    fetchZakatData();
   }, []);
 
   return (

@@ -4,7 +4,9 @@ from ai_agent import AIAgent
 from firebase_config import db
 from security import require_auth
 from datetime import datetime
+from dotenv import load_dotenv
 
+load_dotenv()
 ai_bp = Blueprint('ai', __name__)
 agent = AIAgent()
 
