@@ -60,7 +60,7 @@ async function apiSearchStocks(query) {
 async function apiFetchStockData(ticker) {
   const token    = await getAuthToken();
   const response = await fetch(
-    `${BACKEND_URL}/market/details/${ticker}`,
+    `${BACKEND_URL}/api/stocks/market/details/${ticker}`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   const result = await response.json();

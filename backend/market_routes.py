@@ -65,7 +65,7 @@ def get_stock_chart(ticker):
         ticker = ticker.upper()
         period = request.args.get('period', '1Y').upper()
 
-        candles = get_historical_candles(ticker, period=period)
+        candles = get_historical_candles(ticker, timeframe=period)
 
         if not candles:
             return jsonify({
@@ -88,7 +88,6 @@ def get_stock_chart(ticker):
 
 
 # ── /market/search?q=AAPL ────────────────────────────────────────────────────
-# FIX: now returns `exchange` so WatchCard doesn't show "—" for every result.
 @market_bp.route('/search', methods=['GET'])
 @require_auth
 def search_stock_possibilities():
@@ -97,28 +96,30 @@ def search_stock_possibilities():
         if not query:
             return jsonify({"success": True, "data": []})
 
-        api_key        = os.getenv('FINNHUB_API_KEY')
-        search_results = requests.get(
-            f"https://finnhub.io/api/v1/search?q={query}&token={api_key}",
-            timeout=5,
-        ).json().get('result', [])
+        # 🟢 Use Yahoo Finance's public search API (No API key needed!)
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={query}"
+        
+        response = requests.get(url, headers=headers, timeout=5)
+        search_results = response.json().get('quotes', [])
 
         possibilities = []
         for stock in search_results[:10]:
             symbol = stock.get('symbol', '')
-            if not symbol or '.' in symbol:
+            # Skip empty symbols or cryptocurrency for this app
+            if not symbol or '=' in symbol or '-' in symbol:
                 continue
+                
             possibilities.append({
                 "ticker":   symbol,
-                "name":     stock.get('description', ''),
-                # Finnhub returns 'type' like "Common Stock" and includes exchange in symbol
-                # Use primaryExchange when available, fall back to 'US'
-                "exchange": stock.get('primaryExchange') or stock.get('exchange') or 'US',
+                "name":     stock.get('shortname') or stock.get('longname') or symbol,
+                "exchange": stock.get('exchDisp') or stock.get('exchange') or 'US',
             })
 
         return jsonify({"success": True, "data": possibilities})
 
     except Exception as e:
+        print(f"❌ Search Error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
