@@ -12,6 +12,8 @@ Amanah combines an 8-agent AI swarm, real-time Bursa Malaysia market data, and I
 [![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%2B%20Auth-FFCA28?style=flat&logo=firebase&logoColor=black)](https://firebase.google.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+> Built for **FinHack 2026**
+
 </div>
 
 ---
@@ -21,20 +23,19 @@ Amanah combines an 8-agent AI swarm, real-time Bursa Malaysia market data, and I
 - [What is Amanah?](#-what-is-amanah)
 - [Features](#-features)
 - [Technology Stack](#-technology-stack)
-- [AI Tools Used](#-ai-tools-used)
-- [How the System is Built](#-how-the-system-is-built)
+- [AI System](#-ai-system)
+- [Architecture](#-architecture)
 - [Database Schema](#-database-schema)
 - [API Reference](#-api-reference)
 - [Setup & Installation](#-setup--installation)
 - [Environment Variables](#-environment-variables)
+- [Security Notes](#-security-notes)
 
 ---
 
 ## 🌙 What is Amanah?
 
 Amanah ("trust" in Arabic) is an AI-powered financial advisor that screens stocks for Shariah compliance, runs an 8-agent swarm simulation to generate investment consensus, and answers financial questions in Bahasa Melayu. It is built specifically for Muslim retail investors in Malaysia who need halal-first guidance without compromising on analytical depth.
-
-> Built for **FinHack 2026**.
 
 ---
 
@@ -55,7 +56,9 @@ Amanah ("trust" in Arabic) is an AI-powered financial advisor that screens stock
 ---
 
 ## 🛠️ Technology Stack
+
 ### Frontend
+
 | Technology | Purpose |
 |---|---|
 | **React 19** | Frontend UI framework |
@@ -68,6 +71,7 @@ Amanah ("trust" in Arabic) is an AI-powered financial advisor that screens stock
 | **Context API** | Global AI advisor state management |
 
 ### Backend
+
 | Technology | Version | Purpose |
 |---|---|---|
 | **Python** | 3.11+ | Core runtime |
@@ -77,6 +81,7 @@ Amanah ("trust" in Arabic) is an AI-powered financial advisor that screens stock
 | **Werkzeug ProxyFix** | built-in | Correct IP detection behind reverse proxy |
 
 ### Database & Auth
+
 | Technology | Purpose |
 |---|---|
 | **Firebase Firestore** | NoSQL document database — users, portfolios, chat, zakat |
@@ -84,6 +89,7 @@ Amanah ("trust" in Arabic) is an AI-powered financial advisor that screens stock
 | **firebase-admin SDK** | Server-side Firebase access |
 
 ### Data Sources
+
 | Source | Library | Data Provided |
 |---|---|---|
 | **Yahoo Finance** | `yfinance` | Live quotes, fundamentals, historical candles, stock search |
@@ -91,13 +97,15 @@ Amanah ("trust" in Arabic) is an AI-powered financial advisor that screens stock
 | **Gold Price API** | `requests` | Live gold price for Nisab calculation (7-day Firestore cache) |
 
 ### AI Providers
+
 | Provider | Model | Role |
 |---|---|---|
 | **Groq** | `llama-3.3-70b-versatile` | Primary — swarm agents + final advisor response |
 | **OpenRouter** | `qwen/qwen-2.5-72b-instruct` | Fallback #1 for swarm and advisor |
 | **Google Gemini** | `gemini-2.5-flash` | Fallback #2 for swarm and advisor |
 
-### Python Libraries
+### Python Dependencies
+
 ```
 flask flask-cors flask-limiter
 firebase-admin
@@ -108,22 +116,9 @@ aiohttp asyncio
 
 ---
 
-### Frontend Responsibilities
-| Feature | Description |
-|---|---|
-| 💬 **AI Side Panel** | Interactive AI assistant panel integrated into Stocks and Financial pages |
-| 🧠 **AI Chat State Management** | Uses React Context API to manage AI conversation state globally |
-| 🗂️ **Chat History Logic** | Frontend handles temporary AI history storage, restore flow, and clear-history logic |
-| 🧹 **Session Cleanup** | AI messages are cleared automatically on logout using Firebase auth state handling |
-| 🧮 **Financial Calculations** | Client-side calculations for assets, liabilities, jumlah bersih, zakatable amount, and zakat eligibility |
-| 📊 **Interactive Dashboard UI** | Renders live portfolio, charts, watchlists, and financial data |
-| 🔐 **Frontend Authentication Flow** | Firebase Authentication integrated directly into React frontend |
-| ⚡ **Responsive SPA Architecture** | Single-page application powered by React Router and Vite |
+## 🤖 AI System
 
-
-## 🤖 AI Tools Used
-
-Amanah's intelligence layer is built on three tiers of AI — the swarm simulation, the final advisor, and the Shariah compliance engine.
+Amanah's intelligence layer is built on three tiers: the swarm simulation, the consensus engine, the final advisor, and the Shariah compliance filter.
 
 ### 1. 🧠 The Swarm — 8 Parallel AI Agents
 
@@ -176,11 +171,11 @@ After the swarm consensus is computed, the system builds a rich Bahasa Melayu pr
 - Shariah status and reason
 - User profile context (income, risk tolerance, tabung goal progress)
 
-This prompt is sent to the **primary LLM provider** (Groq → OpenRouter → Gemini fallback chain) to generate a final conversational response as "Amanah".
+This prompt is sent through the **primary LLM provider** (Groq → OpenRouter → Gemini fallback chain) to generate a final conversational response as "Amanah".
 
 ### 4. 🕌 Shariah Filter (`shariah_filter.py`)
 
-A rule-based compliance engine using Finnhub data, not a generative AI — ensuring deterministic, auditable screening:
+A rule-based compliance engine using Finnhub data — not a generative AI — ensuring deterministic, auditable screening:
 
 1. **Forbidden sector check** — gambling, alcohol, tobacco, weapons, pork, pornography
 2. **Conventional finance check** — skipped for Islamic institutions (whitelist: BIMB, Maybank Islamic, Takaful, etc.)
@@ -188,43 +183,12 @@ A rule-based compliance engine using Finnhub data, not a generative AI — ensur
 
 ---
 
-## 🏗️ How the System is Built
-
-Here is a structured **Key Frontend Services** section ready to be copied and pasted into your `README.md`. It categorizes the core functionalities based on the provided components.
-
-## 🧩 Key Frontend Services
-
-The frontend is built with React and structured into modular, feature-based services. Below are the core modules driving the application:
-
-### 1. Authentication & Onboarding (`Auth.jsx`, `preferences.jsx`)
-* **Multi-Provider Authentication**: Secure login and registration using Firebase Authentication (Email/Password & Google OAuth).
-* **Smart Routing**: Checks Firestore upon login to determine if a user has completed their financial profile; dynamically routes new users to the onboarding survey and returning users to their dashboard.
-* **Interactive Financial Profiling**: A multi-step, progress-tracked survey capturing employment status, income, investment experience, risk tolerance, and Zakat goals. Data is securely transmitted to the backend via Firebase Auth tokens.
-
-### 2. Shariah AI Advisor (`AIAdvisorContext.jsx`, `AIAdvisorPanel.jsx`, `TextHighlightAsk.jsx`, `Advisor.jsx)
-* **Context-Aware Chat**: A floating AI panel that retains chat history using `sessionStorage` across page navigations.
-* **Highlight-to-Ask**: Users can highlight text anywhere on the page to trigger a floating "Ask AI" widget, instantly passing the highlighted text as context to the AI model.
-* **Multimodal Inputs**: Supports rich user queries including text and file attachments (PDF/Images up to 5MB), safely serialized and sent to the Flask AI backend.
-* **Real-time UX**: Features smooth auto-scrolling, dynamic textarea resizing, and typing indicators for a natural conversational feel.
-
-### 3. Stock Market & Portfolio Dashboard (`Stocks.jsx` & Components)
-* **Unified Market Dashboard**: Integrates real-time Shariah-compliant stock screening, quotes, and company details in a single view.
-* **Interactive Data Visualization**: Utilizes `recharts` to render responsive, interactive area charts (`StockChart.jsx`) with custom tooltips, dynamic high/low domains, and multiple timeframe selections (1D, 1W, 1M, 3M, 1Y, ALL).
-* **Smart Search Bar**: Features a debounced (500ms) search input (`StockSearchBar.jsx`) with full keyboard navigation support (Up/Down arrows, Enter, Escape) for seamless ticker discovery.
-* **Drag-and-Drop Watchlist**: A persistent, Firebase-synced side panel (`StockSidePanel.jsx`) allowing users to track favorite stocks and intuitively reorder them using HTML5 Drag and Drop API.
-
-### 4. Financial Planning (`Zakat.jsx`)
-* **Live Market Integration**: Automatically fetches real-time Nisab thresholds and Gold prices upon component mount.
-* **Comprehensive Tracking**: Aggregates data from user-defined assets and liabilities to calculate the Net Zakat-able amount.
-**Interactive Goal Management**: Users can create new goals with custom icons, target amounts, and deadlines via the `EditGoalModal`, as well as log new savings increments through the dedicated `SaveMoneyModal`. The UI also supports reordering goals up or down based on priority.
-* **Modular Architecture**: Breaks down complex calculations into distinct, manageable components (`ZakatAsset`, `ZakatLiabiliti`, `ZakatNisab`, `ZakatRingkasan`, `Zakatbleamount`, `Zakatgoals`).
-
-```
+## 🏗️ Architecture
 
 ### Request Lifecycle
 
 ```
-Frontend (React+ Vite SPA)
+Frontend (React + Vite SPA)
     │
     │  POST /api/aiagent/ai/chat
     │  Headers: Authorization: Bearer <Firebase JWT>
@@ -274,72 +238,98 @@ AIAgent.process()
             JSON response to frontend ✅
 ```
 
-### Blueprint Structure
-# frontend
+### Backend Blueprint Structure
 
-src/
- ├── App.js (Router Configuration)
- │
- ├── 1️⃣ Authentication & Onboarding
- │    ├── Auth.jsx                 # Login/Signup (Firebase Email + Google OAuth)
- │    └── preferences.jsx          # Multi-step financial profile survey
- │
- ├── 2️⃣ Main Application Shell
- │    ├── AppLayout.jsx            # 
- │
- └── 3️⃣ Core Feature Pages (Accessible via Navigation)
-      │
-      └──  Page A: Zakat Center (Zakat.jsx)
-        ├── ZakatNisab.jsx        # Live Gold Price and Nisab threshold fetcher
-        ├── Zakatasset.jsx        # Savings, Investments, Gold, Business inputs
-        ├── ZakatLiabiliti.jsx    # Debt and loan deductions
-        ├── Zakatbleamount.jsx    # Haul date tracker & Net Wealth calculation
-        ├── Zakatringkasan.jsx    # Final eligibility check & 2.5% payable calculation
-        └── Zakatgoals.jsx        # financial targets (Umrah, Home, etc.)
-      │   └── # High-level summary of wealth and portfolio
-      │
-      ├── Page B: Stocks Market (Stocks.jsx)
-      │    ├── StockSearchBar.jsx    # Debounced API search with keyboard nav
-      │    ├── StockHeader.jsx       # Live quote, ticker, and daily change
-      │    ├── StockChart.jsx        # Recharts AreaChart with timeframe toggles
-      │    ├── StockDetails.jsx      # Shariah status, PE ratio, Dividend yield grid
-      │    └── StockSidePanel.jsx    # Drag-and-drop Watchlist sidebar
-      │         └── WatchCard.jsx    # Individual tracked stock component
-      │
-      |-Page C: AI panel page
-        ├── AIAdvisorContext.jsx  # Manages chat history state via sessionStorage
-        ├── AIAdvisorPanel.jsx    # The floating chat UI & file attachment handler
-         └── TextHighlightAsk.jsx  # Listens for text selection to trigger "Ask AI"
-                
-# backend
 ```
 app.py
 ├── /api/stocks/portfolio/*  ──►  portfolio_routes.py
-│     ├── GET  /my-portfolio       Live-enriched holdings
-│     ├── GET  /stock/<ticker>     Quote + fundamentals + chart
-│     ├── POST /buy                Add/update holding
-│     ├── POST /watchlist          Add/update watchlist item
-│     ├── POST /watchlist/remove   Remove from watchlist
-│     ├── POST /update             Save user preferences
-│     ├── GET  /me                 Load user profile
-│     └── POST /goal               Save Tabung savings goal
+│     ├── GET  /my-portfolio          Live-enriched holdings
+│     ├── GET  /stock/<ticker>        Quote + fundamentals + chart
+│     ├── POST /buy                   Add/update holding
+│     ├── POST /watchlist             Add/update watchlist item
+│     ├── POST /watchlist/remove      Remove from watchlist
+│     ├── POST /update                Save user preferences
+│     ├── GET  /me                    Load user profile
+│     └── POST /goal                  Save Tabung savings goal
 │
 ├── /api/stocks/market/*     ──►  market_routes.py
-│     ├── GET  /details/<ticker>   Quote + fundamentals + Shariah (one call)
-│     ├── GET  /chart/<ticker>     Historical candle data
-│     ├── GET  /search?q=          Stock symbol search
-│     └── GET  /all                Halal stock discovery list
+│     ├── GET  /details/<ticker>      Quote + fundamentals + Shariah (one call)
+│     ├── GET  /chart/<ticker>        Historical candle data
+│     ├── GET  /search?q=             Stock symbol search
+│     └── GET  /all                   Halal stock discovery list
 │
 ├── /api/zakat/*             ──►  zakat_endpoints.py
-│     ├── GET  /nisab              Live Nisab value (gold price × 85g)
-│     ├── GET  /data               Load user's saved zakat profile
-│     └── POST /save-data          Save zakat calculation state
+│     ├── GET  /nisab                 Live Nisab value (gold price × 85g)
+│     ├── GET  /data                  Load user's saved zakat profile
+│     └── POST /save-data             Save zakat calculation state
 │
 └── /api/aiagent/ai/*        ──►  ai_routes.py
-      ├── POST /chat               Send message, receive AI response
-      ├── GET  /history            Load chat session history
-      └── DELETE /history          Clear chat session
+      ├── POST /chat                  Send message, receive AI response
+      ├── GET  /history               Load chat session history
+      └── DELETE /history             Clear chat session
 ```
+
+### Frontend Structure
+
+```
+src/
+├── App.js                          # Router Configuration
+│
+├── 1️⃣ Authentication & Onboarding
+│    ├── Auth.jsx                   # Login/Signup (Firebase Email + Google OAuth)
+│    └── preferences.jsx            # Multi-step financial profile survey
+│
+├── 2️⃣ Main Application Shell
+│    └── AppLayout.jsx
+│
+└── 3️⃣ Core Feature Pages
+     │
+     ├── Page A: Zakat Center (Zakat.jsx)
+     │    ├── ZakatNisab.jsx         # Live Gold Price and Nisab threshold fetcher
+     │    ├── Zakatasset.jsx         # Savings, Investments, Gold, Business inputs
+     │    ├── ZakatLiabiliti.jsx     # Debt and loan deductions
+     │    ├── Zakatbleamount.jsx     # Haul date tracker & Net Wealth calculation
+     │    ├── Zakatringkasan.jsx     # Final eligibility check & 2.5% payable calculation
+     │    └── Zakatgoals.jsx         # Financial targets (Umrah, Home, etc.)
+     │
+     ├── Page B: Stocks Market (Stocks.jsx)
+     │    ├── StockSearchBar.jsx     # Debounced API search with keyboard nav
+     │    ├── StockHeader.jsx        # Live quote, ticker, and daily change
+     │    ├── StockChart.jsx         # Recharts AreaChart with timeframe toggles
+     │    ├── StockDetails.jsx       # Shariah status, PE ratio, Dividend yield grid
+     │    └── StockSidePanel.jsx     # Drag-and-drop Watchlist sidebar
+     │         └── WatchCard.jsx     # Individual tracked stock component
+     │
+     └── Page C: AI Advisor
+          ├── AIAdvisorContext.jsx   # Manages chat history state via sessionStorage
+          ├── AIAdvisorPanel.jsx     # The floating chat UI & file attachment handler
+          └── TextHighlightAsk.jsx  # Listens for text selection to trigger "Ask AI"
+```
+
+### Key Frontend Services
+
+#### 1. Authentication & Onboarding (`Auth.jsx`, `preferences.jsx`)
+- **Multi-Provider Authentication**: Secure login and registration using Firebase Authentication (Email/Password & Google OAuth).
+- **Smart Routing**: Checks Firestore upon login to determine if a user has completed their financial profile; dynamically routes new users to the onboarding survey and returning users to their dashboard.
+- **Interactive Financial Profiling**: A multi-step, progress-tracked survey capturing employment status, income, investment experience, risk tolerance, and Zakat goals. Data is securely transmitted to the backend via Firebase Auth tokens.
+
+#### 2. Shariah AI Advisor (`AIAdvisorContext.jsx`, `AIAdvisorPanel.jsx`, `TextHighlightAsk.jsx`, `Advisor.jsx`)
+- **Context-Aware Chat**: A floating AI panel that retains chat history using `sessionStorage` across page navigations.
+- **Highlight-to-Ask**: Users can highlight text anywhere on the page to trigger a floating "Ask AI" widget, instantly passing the highlighted text as context to the AI model.
+- **Multimodal Inputs**: Supports rich user queries including text and file attachments (PDF/Images up to 5MB), safely serialized and sent to the Flask AI backend.
+- **Real-time UX**: Features smooth auto-scrolling, dynamic textarea resizing, and typing indicators for a natural conversational feel.
+
+#### 3. Stock Market & Portfolio Dashboard (`Stocks.jsx`)
+- **Unified Market Dashboard**: Integrates real-time Shariah-compliant stock screening, quotes, and company details in a single view.
+- **Interactive Data Visualization**: Utilizes `recharts` to render responsive, interactive area charts with custom tooltips, dynamic high/low domains, and multiple timeframe selections (1D, 1W, 1M, 3M, 1Y, ALL).
+- **Smart Search Bar**: Features a debounced (500ms) search input with full keyboard navigation support (Up/Down arrows, Enter, Escape) for seamless ticker discovery.
+- **Drag-and-Drop Watchlist**: A persistent, Firebase-synced side panel allowing users to track favourite stocks and intuitively reorder them using the HTML5 Drag and Drop API.
+
+#### 4. Financial Planning (`Zakat.jsx`)
+- **Live Market Integration**: Automatically fetches real-time Nisab thresholds and Gold prices upon component mount.
+- **Comprehensive Tracking**: Aggregates data from user-defined assets and liabilities to calculate the net Zakat-able amount.
+- **Interactive Goal Management**: Users can create new goals with custom icons, target amounts, and deadlines, as well as log new savings increments and reorder goals by priority.
+- **Modular Architecture**: Breaks down complex calculations into distinct, manageable components (`ZakatAsset`, `ZakatLiabiliti`, `ZakatNisab`, `ZakatRingkasan`, `Zakatbleamount`, `Zakatgoals`).
 
 ---
 
@@ -375,10 +365,10 @@ users/
     │   └── { nisab_amount, assets, liabilities,
     │          net_amount, zakat_due, haul_date, zakat_goals }
     │
-    └── chat_sessions/                    ← Subcollection
-        └── {session_id}/               ← e.g. "2026-05-24"
+    └── chat_sessions/                  ← Subcollection
+        └── {session_id}/              ← e.g. "2026-05-24"
             ├── last_updated  (string)
-            └── messages/               ← Subcollection
+            └── messages/              ← Subcollection
                 └── {message_id}/
                     ├── role      (string)  "user" | "assistant"
                     ├── content   (string)
@@ -421,20 +411,23 @@ All endpoints require `Authorization: Bearer <Firebase JWT>` header.
 ## 🚀 Setup & Installation
 
 ### Prerequisites
+
 - Node.js 20+
 - npm
 - Python 3.11+
 - A Firebase project with **Firestore** and **Authentication** enabled
 - API keys for Groq, Finnhub, and (optionally) OpenRouter and Gemini
 
-### 1. Clone the repository
+### Backend Setup
+
+**1. Clone the repository**
 
 ```bash
 git clone https://github.com/your-username/amanah-backend.git
 cd amanah-backend
 ```
 
-### 2. Create and activate a virtual environment
+**2. Create and activate a virtual environment**
 
 ```bash
 python -m venv venv
@@ -446,7 +439,7 @@ source venv/bin/activate
 venv\Scripts\activate
 ```
 
-### 3. Install dependencies
+**3. Install dependencies**
 
 ```bash
 pip install flask flask-cors flask-limiter werkzeug \
@@ -462,7 +455,7 @@ Or if you have a `requirements.txt`:
 pip install -r requirements.txt
 ```
 
-### 4. Add your Firebase service account
+**4. Add your Firebase service account**
 
 Download your Firebase Admin SDK credentials from:
 **Firebase Console → Project Settings → Service Accounts → Generate new private key**
@@ -471,7 +464,7 @@ Save the file as `firebase-adminsdk.json` in the project root.
 
 > ⚠️ **Never commit this file.** Add it to `.gitignore`.
 
-### 5. Create your `.env` file
+**5. Create your `.env` file**
 
 ```bash
 cp .env.example .env
@@ -479,7 +472,7 @@ cp .env.example .env
 
 Then fill in your values (see [Environment Variables](#-environment-variables) below).
 
-### 6. Run the server
+**6. Run the server**
 
 ```bash
 python app.py
@@ -499,19 +492,16 @@ curl http://localhost:5000/api/health
 # → {"message": "Modular Islamic Stocks API is running! 🐍🚀"}
 ```
 
----
+### Frontend Setup
 
-# frontend setup
-cd frontend
-npm install
-npm run dev
-
-The frontend starts on:
+**1. Install dependencies**
 
 ```bash
-http://localhost:5173
+cd frontend
+npm install
 ```
-## 🌐 Frontend Environment Variables
+
+**2. Create the frontend `.env` file**
 
 Create a `.env` file inside the `frontend/` directory:
 
@@ -525,6 +515,16 @@ VITE_FIREBASE_STORAGE_BUCKET=your_bucket
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 ```
+
+**3. Start the development server**
+
+```bash
+npm run dev
+```
+
+The frontend starts on `http://localhost:5173`.
+
+---
 
 ## 🔑 Environment Variables
 
