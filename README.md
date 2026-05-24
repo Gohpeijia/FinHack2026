@@ -6,6 +6,7 @@
 
 Amanah combines an 8-agent AI swarm, real-time Bursa Malaysia market data, and Islamic finance principles to deliver halal investment guidance — all in Bahasa Melayu.
 
+[![React](https://img.shields.io/badge/React-19+-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=flat&logo=flask)](https://flask.palletsprojects.com)
 [![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%2B%20Auth-FFCA28?style=flat&logo=firebase&logoColor=black)](https://firebase.google.com)
@@ -54,6 +55,17 @@ Amanah ("trust" in Arabic) is an AI-powered financial advisor that screens stock
 ---
 
 ## 🛠️ Technology Stack
+### Frontend
+| Technology | Purpose |
+|---|---|
+| **React 19** | Frontend UI framework |
+| **Vite** | Build tool and development server |
+| **React Router DOM** | Client-side routing and navigation |
+| **Firebase SDK** | Authentication and frontend Firebase integration |
+| **Axios** | API communication with Flask backend |
+| **React Icons** | Dashboard and navigation icons |
+| **Recharts** | Financial charts and data visualization |
+| **Context API** | Global AI advisor state management |
 
 ### Backend
 | Technology | Version | Purpose |
@@ -95,6 +107,19 @@ aiohttp asyncio
 ```
 
 ---
+
+### Frontend Responsibilities
+| Feature | Description |
+|---|---|
+| 💬 **AI Side Panel** | Interactive AI assistant panel integrated into Stocks and Financial pages |
+| 🧠 **AI Chat State Management** | Uses React Context API to manage AI conversation state globally |
+| 🗂️ **Chat History Logic** | Frontend handles temporary AI history storage, restore flow, and clear-history logic |
+| 🧹 **Session Cleanup** | AI messages are cleared automatically on logout using Firebase auth state handling |
+| 🧮 **Financial Calculations** | Client-side calculations for assets, liabilities, jumlah bersih, zakatable amount, and zakat eligibility |
+| 📊 **Interactive Dashboard UI** | Renders live portfolio, charts, watchlists, and financial data |
+| 🔐 **Frontend Authentication Flow** | Firebase Authentication integrated directly into React frontend |
+| ⚡ **Responsive SPA Architecture** | Single-page application powered by React Router and Vite |
+
 
 ## 🤖 AI Tools Used
 
@@ -165,10 +190,41 @@ A rule-based compliance engine using Finnhub data, not a generative AI — ensur
 
 ## 🏗️ How the System is Built
 
+Here is a structured **Key Frontend Services** section ready to be copied and pasted into your `README.md`. It categorizes the core functionalities based on the provided components.
+
+## 🧩 Key Frontend Services
+
+The frontend is built with React and structured into modular, feature-based services. Below are the core modules driving the application:
+
+### 1. Authentication & Onboarding (`Auth.jsx`, `preferences.jsx`)
+* **Multi-Provider Authentication**: Secure login and registration using Firebase Authentication (Email/Password & Google OAuth).
+* **Smart Routing**: Checks Firestore upon login to determine if a user has completed their financial profile; dynamically routes new users to the onboarding survey and returning users to their dashboard.
+* **Interactive Financial Profiling**: A multi-step, progress-tracked survey capturing employment status, income, investment experience, risk tolerance, and Zakat goals. Data is securely transmitted to the backend via Firebase Auth tokens.
+
+### 2. Shariah AI Advisor (`AIAdvisorContext.jsx`, `AIAdvisorPanel.jsx`, `TextHighlightAsk.jsx`, `Advisor.jsx)
+* **Context-Aware Chat**: A floating AI panel that retains chat history using `sessionStorage` across page navigations.
+* **Highlight-to-Ask**: Users can highlight text anywhere on the page to trigger a floating "Ask AI" widget, instantly passing the highlighted text as context to the AI model.
+* **Multimodal Inputs**: Supports rich user queries including text and file attachments (PDF/Images up to 5MB), safely serialized and sent to the Flask AI backend.
+* **Real-time UX**: Features smooth auto-scrolling, dynamic textarea resizing, and typing indicators for a natural conversational feel.
+
+### 3. Stock Market & Portfolio Dashboard (`Stocks.jsx` & Components)
+* **Unified Market Dashboard**: Integrates real-time Shariah-compliant stock screening, quotes, and company details in a single view.
+* **Interactive Data Visualization**: Utilizes `recharts` to render responsive, interactive area charts (`StockChart.jsx`) with custom tooltips, dynamic high/low domains, and multiple timeframe selections (1D, 1W, 1M, 3M, 1Y, ALL).
+* **Smart Search Bar**: Features a debounced (500ms) search input (`StockSearchBar.jsx`) with full keyboard navigation support (Up/Down arrows, Enter, Escape) for seamless ticker discovery.
+* **Drag-and-Drop Watchlist**: A persistent, Firebase-synced side panel (`StockSidePanel.jsx`) allowing users to track favorite stocks and intuitively reorder them using HTML5 Drag and Drop API.
+
+### 4. Financial Planning (`Zakat.jsx`)
+* **Live Market Integration**: Automatically fetches real-time Nisab thresholds and Gold prices upon component mount.
+* **Comprehensive Tracking**: Aggregates data from user-defined assets and liabilities to calculate the Net Zakat-able amount.
+**Interactive Goal Management**: Users can create new goals with custom icons, target amounts, and deadlines via the `EditGoalModal`, as well as log new savings increments through the dedicated `SaveMoneyModal`. The UI also supports reordering goals up or down based on priority.
+* **Modular Architecture**: Breaks down complex calculations into distinct, manageable components (`ZakatAsset`, `ZakatLiabiliti`, `ZakatNisab`, `ZakatRingkasan`, `Zakatbleamount`, `Zakatgoals`).
+
+```
+
 ### Request Lifecycle
 
 ```
-Frontend (React)
+Frontend (React+ Vite SPA)
     │
     │  POST /api/aiagent/ai/chat
     │  Headers: Authorization: Bearer <Firebase JWT>
@@ -219,7 +275,43 @@ AIAgent.process()
 ```
 
 ### Blueprint Structure
+# frontend
 
+src/
+ ├── App.js (Router Configuration)
+ │
+ ├── 1️⃣ Authentication & Onboarding
+ │    ├── Auth.jsx                 # Login/Signup (Firebase Email + Google OAuth)
+ │    └── preferences.jsx          # Multi-step financial profile survey
+ │
+ ├── 2️⃣ Main Application Shell
+ │    ├── AppLayout.jsx            # 
+ │
+ └── 3️⃣ Core Feature Pages (Accessible via Navigation)
+      │
+      └──  Page A: Zakat Center (Zakat.jsx)
+        ├── ZakatNisab.jsx        # Live Gold Price and Nisab threshold fetcher
+        ├── Zakatasset.jsx        # Savings, Investments, Gold, Business inputs
+        ├── ZakatLiabiliti.jsx    # Debt and loan deductions
+        ├── Zakatbleamount.jsx    # Haul date tracker & Net Wealth calculation
+        ├── Zakatringkasan.jsx    # Final eligibility check & 2.5% payable calculation
+        └── Zakatgoals.jsx        # financial targets (Umrah, Home, etc.)
+      │   └── # High-level summary of wealth and portfolio
+      │
+      ├── Page B: Stocks Market (Stocks.jsx)
+      │    ├── StockSearchBar.jsx    # Debounced API search with keyboard nav
+      │    ├── StockHeader.jsx       # Live quote, ticker, and daily change
+      │    ├── StockChart.jsx        # Recharts AreaChart with timeframe toggles
+      │    ├── StockDetails.jsx      # Shariah status, PE ratio, Dividend yield grid
+      │    └── StockSidePanel.jsx    # Drag-and-drop Watchlist sidebar
+      │         └── WatchCard.jsx    # Individual tracked stock component
+      │
+      |-Page C: AI panel page
+        ├── AIAdvisorContext.jsx  # Manages chat history state via sessionStorage
+        ├── AIAdvisorPanel.jsx    # The floating chat UI & file attachment handler
+         └── TextHighlightAsk.jsx  # Listens for text selection to trigger "Ask AI"
+                
+# backend
 ```
 app.py
 ├── /api/stocks/portfolio/*  ──►  portfolio_routes.py
@@ -329,7 +421,8 @@ All endpoints require `Authorization: Bearer <Firebase JWT>` header.
 ## 🚀 Setup & Installation
 
 ### Prerequisites
-
+- Node.js 20+
+- npm
 - Python 3.11+
 - A Firebase project with **Firestore** and **Authentication** enabled
 - API keys for Groq, Finnhub, and (optionally) OpenRouter and Gemini
@@ -408,6 +501,31 @@ curl http://localhost:5000/api/health
 
 ---
 
+# frontend setup
+cd frontend
+npm install
+npm run dev
+
+The frontend starts on:
+
+```bash
+http://localhost:5173
+```
+## 🌐 Frontend Environment Variables
+
+Create a `.env` file inside the `frontend/` directory:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000
+
+VITE_FIREBASE_API_KEY=your_key
+VITE_FIREBASE_AUTH_DOMAIN=your_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
+
 ## 🔑 Environment Variables
 
 Create a `.env` file in the project root with the following keys:
@@ -457,39 +575,6 @@ Groq  →  OpenRouter  →  Gemini
 ```
 
 If none are configured, the server will start but AI responses will fail with a 503.
-
----
-
-## 📁 Project Structure
-
-```
-amanah-backend/
-│
-├── app.py                  # Flask app entry point, blueprint registration
-├── firebase_config.py      # Firebase Admin SDK initialization
-├── security.py             # require_auth JWT middleware
-│
-├── ai_agent.py             # Main AIAgent orchestrator
-├── mirofish_loop.py        # SwarmSimulationEngine — 8 parallel agents
-├── consensus_engine.py     # Weighted vote aggregation + temporal tracking
-├── prompt_engine.py        # ShariahAdvisorPromptManager (Bahasa Melayu)
-├── shariah_filter.py       # Rule-based Shariah compliance screener
-├── news_fetcher.py         # Quantitative data builder (yfinance + Finnhub)
-│
-├── ai_routes.py            # Blueprint: /api/aiagent/ai/*
-├── market_routes.py        # Blueprint: /api/stocks/market/*
-├── portfolio_routes.py     # Blueprint: /api/stocks/portfolio/*
-├── zakat_endpoints.py      # Blueprint: /api/zakat/*
-│
-├── finnhub_service.py      # yfinance wrappers (quote, fundamentals, candles)
-├── zakat_service.py        # Gold price fetching with Firestore cache
-│
-├── firebase-adminsdk.json  # ← NOT committed (add to .gitignore)
-├── .env                    # ← NOT committed (add to .gitignore)
-├── .env.example            # Template for environment variables
-├── .gitignore
-└── requirements.txt
-```
 
 ---
 
