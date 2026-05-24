@@ -456,12 +456,6 @@ pip install flask flask-cors flask-limiter werkzeug \
             aiohttp
 ```
 
-Or if you have a `requirements.txt`:
-
-```bash
-pip install -r requirements.txt
-```
-
 ### 4. Add your Firebase service account
 
 Download your Firebase Admin SDK credentials from:
@@ -586,9 +580,5 @@ If none are configured, the server will start but AI responses will fail with a 
 - Rate limiting is enforced globally: **1000 requests/day, 120 requests/minute** per IP
 
 ---
-
-<div align="center">
-
-Built with 🤍 for the Muslim investor community in Malaysia.
 
 </div>
