@@ -587,8 +587,4 @@ If none are configured, the server will start but AI responses will fail with a 
 
 ---
 
-<div align="center">
-
-Built with 🤍 for the Muslim investor community in Malaysia.
-
 </div>
