@@ -95,7 +95,7 @@ def get_company_fundamentals(ticker: str) -> dict:
             "debtToEquity": round(debt_equity, 2) if debt_equity else None,
             "sector": info.get('sector', 'N/A'),
             "industry": info.get('industry', 'N/A'),
-            "dividendYield": round(info.get('dividendYield', 0) * 100, 2) if info.get('dividendYield') else None,
+            "dividendYield": info.get('dividendYield') if info.get('dividendYield') else None,
             "dividendRate": info.get('dividendRate', None),
             "eps": info.get('trailingEps', None),
             "beta": round(info.get('beta', 0), 2) if info.get('beta') else None,

@@ -96,7 +96,7 @@ async function _callBackend(conversationId, { text, fileData, fileName, highligh
     const token = await user.getIdToken();
 
     // Clean up history fields to only send what the AI agent relies on
-    const cleanHistory = chatHistory.map(msg => ({
+    const cleanHistory = chatHistory.slice(0, -1).map(msg => ({
       role: msg.role,
       content: msg.highlightedText 
         ? `[Teks Rujukan: "${msg.highlightedText}"]\nSoalan: ${msg.content}` 
